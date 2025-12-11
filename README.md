@@ -166,7 +166,7 @@ lumen/
 - [x] Linux AppImage with auto-updates
 - [x] Mithril fast sync integration
 - [x] Ed25519 signature verification
-- [ ] Tauri GUI with system tray
+- [x] Tauri GUI with system tray
 - [ ] macOS DMG with Sparkle updates
 - [ ] Windows installer with Squirrel
 - [ ] Stake pool operator mode
