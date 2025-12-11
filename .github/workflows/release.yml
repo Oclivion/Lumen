@@ -133,20 +133,16 @@ jobs:
           VERSION="${{ github.event.inputs.version || github.ref_name }}"
           VERSION="${VERSION#v}"
           TAG="v${VERSION}"
-
-          # Create tag if it doesn't exist
-          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
-            git tag "$TAG"
-            git push origin "$TAG"
-          fi
+          REPO="${{ github.repository }}"
 
           # Create or update release
-          if gh release view "$TAG" >/dev/null 2>&1; then
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             echo "Updating existing release $TAG..."
             gh release upload "$TAG" \
               releases/Lumen-*-x86_64.AppImage \
               releases/Lumen-*-x86_64.AppImage.sha256 \
               releases/version.json \
+              --repo "$REPO" \
               --clobber
           else
             echo "Creating new release $TAG..."
@@ -154,6 +150,7 @@ jobs:
               releases/Lumen-*-x86_64.AppImage \
               releases/Lumen-*-x86_64.AppImage.sha256 \
               releases/version.json \
+              --repo "$REPO" \
               --title "Lumen v${VERSION}" \
               --generate-notes
           fi
