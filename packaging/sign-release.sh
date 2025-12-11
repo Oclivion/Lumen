@@ -70,7 +70,7 @@ cat > "$RELEASES_DIR/version.json" << EOF
 {
   "version": "${VERSION}",
   "sha256": "${SHA256}",
-  "signature": ${SIGNATURE:+\"$SIGNATURE\"}${SIGNATURE:-null},
+  "signature": $(if [ -n "$SIGNATURE" ]; then echo "\"$SIGNATURE\""; else echo "null"; fi),
   "min_version": null,
   "release_notes": "Lumen v${VERSION}",
   "released_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
