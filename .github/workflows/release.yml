@@ -117,12 +117,6 @@ jobs:
           path: releases
           merge-multiple: true
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cargo-script
-        run: cargo install cargo-script
-
       - name: Sign releases
         env:
           LUMEN_SIGNING_KEY: ${{ secrets.LUMEN_SIGNING_KEY }}
