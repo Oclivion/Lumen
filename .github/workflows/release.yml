@@ -63,11 +63,13 @@ jobs:
           # Fetch latest stable cardano-node release
           CARDANO_VERSION=$(gh release view --repo IntersectMBO/cardano-node --json tagName -q '.tagName')
           echo "Downloading cardano-node version: ${CARDANO_VERSION}"
-          curl -L -o cardano-node.tar.gz \
-            "https://github.com/IntersectMBO/cardano-node/releases/download/${CARDANO_VERSION}/cardano-node-${CARDANO_VERSION}-linux.tar.gz"
+          # Use gh release download for authenticated, reliable downloads
+          gh release download "${CARDANO_VERSION}" \
+            --repo IntersectMBO/cardano-node \
+            --pattern "cardano-node-${CARDANO_VERSION}-linux.tar.gz"
           mkdir -p "cardano-node-${CARDANO_VERSION}"
-          tar xzf cardano-node.tar.gz -C "cardano-node-${CARDANO_VERSION}" --strip-components=1
-          rm cardano-node.tar.gz
+          tar xzf "cardano-node-${CARDANO_VERSION}-linux.tar.gz" -C "cardano-node-${CARDANO_VERSION}" --strip-components=1
+          rm "cardano-node-${CARDANO_VERSION}-linux.tar.gz"
 
       - name: Download mithril-client
         env:
@@ -78,11 +80,13 @@ jobs:
           # Fetch latest stable mithril release (excludes pre-releases)
           MITHRIL_VERSION=$(gh release view --repo input-output-hk/mithril --json tagName -q '.tagName')
           echo "Downloading mithril-client version: ${MITHRIL_VERSION}"
-          curl -L -o mithril.tar.gz \
-            "https://github.com/input-output-hk/mithril/releases/download/${MITHRIL_VERSION}/mithril-${MITHRIL_VERSION}-linux-x64.tar.gz"
-          tar xzf mithril.tar.gz
+          # Use gh release download for authenticated, reliable downloads
+          gh release download "${MITHRIL_VERSION}" \
+            --repo input-output-hk/mithril \
+            --pattern "mithril-${MITHRIL_VERSION}-linux-x64.tar.gz"
+          tar xzf "mithril-${MITHRIL_VERSION}-linux-x64.tar.gz"
           mv mithril-client "mithril-client-${MITHRIL_VERSION}" || true
-          rm -f mithril.tar.gz
+          rm -f "mithril-${MITHRIL_VERSION}-linux-x64.tar.gz"
 
       - name: Build AppImage
         run: |
