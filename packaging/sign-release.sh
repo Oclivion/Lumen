@@ -14,12 +14,7 @@ if [ -z "$VERSION" ]; then
     echo "Usage: $0 <version>"
     echo ""
     echo "Environment variables:"
-    echo "  LUMEN_SIGNING_KEY - Ed25519 private key (base64)"
-    exit 1
-fi
-
-if [ -z "$PRIVATE_KEY" ]; then
-    echo "ERROR: LUMEN_SIGNING_KEY environment variable not set"
+    echo "  LUMEN_SIGNING_KEY - Ed25519 private key (base64, optional)"
     exit 1
 fi
 
@@ -32,32 +27,37 @@ if [ ! -f "$APPIMAGE" ]; then
     exit 1
 fi
 
-echo "Signing release v${VERSION}..."
+echo "Processing release v${VERSION}..."
 
 # Compute SHA256
 SHA256=$(sha256sum "$APPIMAGE" | cut -d' ' -f1)
 echo "SHA256: $SHA256"
 
-# Sign using openssl with Ed25519
-# Create a temporary key file from the base64 private key
-TMPKEY=$(mktemp)
-trap "rm -f $TMPKEY" EXIT
+# Sign if key is available
+SIGNATURE=""
+if [ -n "$PRIVATE_KEY" ]; then
+    echo "Signing release..."
+    # Create a temporary key file from the base64 private key
+    TMPKEY=$(mktemp)
+    trap "rm -f $TMPKEY" EXIT
 
-# Decode the base64 private key to a PEM file
-echo "-----BEGIN PRIVATE KEY-----" > "$TMPKEY"
-echo "$PRIVATE_KEY" >> "$TMPKEY"
-echo "-----END PRIVATE KEY-----" >> "$TMPKEY"
+    # Decode the base64 private key to a PEM file
+    echo "-----BEGIN PRIVATE KEY-----" > "$TMPKEY"
+    echo "$PRIVATE_KEY" >> "$TMPKEY"
+    echo "-----END PRIVATE KEY-----" >> "$TMPKEY"
 
-# Sign the hash
-SIGNATURE=$(echo -n "$SHA256" | openssl pkeyutl -sign -inkey "$TMPKEY" 2>/dev/null | base64 -w0)
+    # Sign the hash
+    SIGNATURE=$(echo -n "$SHA256" | openssl pkeyutl -sign -inkey "$TMPKEY" 2>/dev/null | base64 -w0) || true
 
-if [ -z "$SIGNATURE" ]; then
-    echo "ERROR: Failed to sign. Check LUMEN_SIGNING_KEY format."
-    echo "Key should be base64-encoded Ed25519 private key (from openssl)"
-    exit 1
+    if [ -n "$SIGNATURE" ]; then
+        echo "Signature: ${SIGNATURE:0:32}..."
+    else
+        echo "WARNING: Failed to sign. Continuing without signature."
+    fi
+else
+    echo "WARNING: LUMEN_SIGNING_KEY not set. Release will not be signed."
+    echo "To sign releases, set LUMEN_SIGNING_KEY to a base64-encoded Ed25519 private key."
 fi
-
-echo "Signature: ${SIGNATURE:0:32}..."
 
 # Get file size
 SIZE=$(stat -c%s "$APPIMAGE" 2>/dev/null || stat -f%z "$APPIMAGE")
@@ -67,7 +67,7 @@ cat > "$RELEASES_DIR/version.json" << EOF
 {
   "version": "${VERSION}",
   "sha256": "${SHA256}",
-  "signature": "${SIGNATURE}",
+  "signature": ${SIGNATURE:+\"$SIGNATURE\"}${SIGNATURE:-null},
   "min_version": null,
   "release_notes": "Lumen v${VERSION}",
   "released_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
