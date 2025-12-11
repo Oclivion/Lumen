@@ -19,7 +19,7 @@ Lumen packages the Cardano node into a user-friendly application that runs out-o
 
 ```bash
 # Download
-curl -LO https://github.com/user/lumen/releases/latest/download/Lumen-x86_64.AppImage
+curl -LO https://github.com/Oclivion/Lumen/releases/latest/download/Lumen-x86_64.AppImage
 chmod +x Lumen-x86_64.AppImage
 
 # Run
@@ -121,8 +121,8 @@ Mithril snapshots are verified via:
 
 ```bash
 # Clone
-git clone https://github.com/user/lumen
-cd lumen
+git clone https://github.com/Oclivion/Lumen
+cd Lumen
 
 # Build
 cargo build --release
@@ -133,6 +133,38 @@ cargo build --release
 # Build AppImage
 ./packaging/linux/build-appimage.sh
 ```
+
+## Release Signing
+
+Releases are signed with Ed25519 for authenticity verification. To set up signing:
+
+### Generate a Signing Key
+
+```bash
+# Generate Ed25519 key pair
+openssl genpkey -algorithm ed25519 -out lumen-signing.pem
+
+# Extract the public key (add to orchestrator/src/config.rs)
+openssl pkey -in lumen-signing.pem -pubout
+
+# Get the base64 body for GitHub Secrets
+grep -v "^-" lumen-signing.pem | tr -d '\n'
+```
+
+### Configure GitHub Actions
+
+1. Go to your repo Settings > Secrets and variables > Actions
+2. Add a new secret named `LUMEN_SIGNING_KEY`
+3. Paste the base64 key body (without `-----BEGIN/END-----` lines)
+
+### Sign Releases Locally
+
+```bash
+export LUMEN_SIGNING_KEY="MC4CAQAwBQYDK2VwBCIEI..."
+./packaging/sign-release.sh 0.1.0
+```
+
+If no signing key is configured, releases are built without signatures (signature field is `null` in version.json).
 
 ## Project Structure
 
