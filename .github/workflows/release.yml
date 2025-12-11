@@ -55,10 +55,14 @@ jobs:
         run: cargo test --release
 
       - name: Download cardano-node
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p .cache/cardano
           cd .cache/cardano
-          CARDANO_VERSION="9.2.1"
+          # Fetch latest stable cardano-node release
+          CARDANO_VERSION=$(gh release view --repo IntersectMBO/cardano-node --json tagName -q '.tagName')
+          echo "Downloading cardano-node version: ${CARDANO_VERSION}"
           curl -L -o cardano-node.tar.gz \
             "https://github.com/IntersectMBO/cardano-node/releases/download/${CARDANO_VERSION}/cardano-node-${CARDANO_VERSION}-linux.tar.gz"
           mkdir -p "cardano-node-${CARDANO_VERSION}"
@@ -66,10 +70,14 @@ jobs:
           rm cardano-node.tar.gz
 
       - name: Download mithril-client
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p .cache/cardano
           cd .cache/cardano
-          MITHRIL_VERSION="2543.1-hotfix"
+          # Fetch latest stable mithril release (excludes pre-releases)
+          MITHRIL_VERSION=$(gh release view --repo input-output-hk/mithril --json tagName -q '.tagName')
+          echo "Downloading mithril-client version: ${MITHRIL_VERSION}"
           curl -L -o mithril.tar.gz \
             "https://github.com/input-output-hk/mithril/releases/download/${MITHRIL_VERSION}/mithril-${MITHRIL_VERSION}-linux-x64.tar.gz"
           tar xzf mithril.tar.gz
