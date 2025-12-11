@@ -136,35 +136,47 @@ cargo build --release
 
 ## Release Signing
 
-Releases are signed with Ed25519 for authenticity verification. To set up signing:
+Releases are signed with Ed25519 to prove they come from the official source. Signing is **optional** - releases will still work without it, but won't have cryptographic verification.
 
-### Generate a Signing Key
+### Step 1: Generate a Signing Key
+
+Run this command to create a new key:
 
 ```bash
-# Generate Ed25519 key pair
 openssl genpkey -algorithm ed25519 -out lumen-signing.pem
-
-# Extract the public key (add to orchestrator/src/config.rs)
-openssl pkey -in lumen-signing.pem -pubout
-
-# Get the base64 body for GitHub Secrets
-grep -v "^-" lumen-signing.pem | tr -d '\n'
 ```
 
-### Configure GitHub Actions
+This creates a file called `lumen-signing.pem`. **Keep this file secret and backed up!**
 
-1. Go to your repo Settings > Secrets and variables > Actions
-2. Add a new secret named `LUMEN_SIGNING_KEY`
-3. Paste the base64 key body (without `-----BEGIN/END-----` lines)
+### Step 2: Get the Key Value for GitHub
 
-### Sign Releases Locally
+Run this command to extract the key value:
 
 ```bash
-export LUMEN_SIGNING_KEY="MC4CAQAwBQYDK2VwBCIEI..."
-./packaging/sign-release.sh 0.1.0
+grep -v "^-" lumen-signing.pem | tr -d '\n' && echo
 ```
 
-If no signing key is configured, releases are built without signatures (signature field is `null` in version.json).
+This outputs a long string like `MC4CAQAwBQYDK2VwBCIEIxxxxxxxxx...`. Copy this entire string.
+
+### Step 3: Add the Secret to GitHub
+
+1. Go to https://github.com/Oclivion/Lumen/settings/secrets/actions
+2. Click the green **"New repository secret"** button
+3. In the **Name** field, type: `LUMEN_SIGNING_KEY`
+4. In the **Secret** field, paste the string you copied in Step 2
+5. Click **"Add secret"**
+
+That's it! Future releases will now be automatically signed.
+
+### Step 4: Get the Public Key (Optional)
+
+If you want to verify signatures, get the public key with:
+
+```bash
+openssl pkey -in lumen-signing.pem -pubout
+```
+
+This public key should be added to `orchestrator/src/config.rs` for the app to verify updates.
 
 ## Project Structure
 
