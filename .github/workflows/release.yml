@@ -127,15 +127,36 @@ jobs:
           ./packaging/sign-release.sh "$VERSION"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            releases/Lumen-*-x86_64.AppImage
-            releases/Lumen-*-x86_64.AppImage.sha256
-            releases/version.json
-          generate_release_notes: true
-          draft: false
-          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+          VERSION="${VERSION#v}"
+          TAG="v${VERSION}"
+
+          # Create tag if it doesn't exist
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+
+          # Create or update release
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Updating existing release $TAG..."
+            gh release upload "$TAG" \
+              releases/Lumen-*-x86_64.AppImage \
+              releases/Lumen-*-x86_64.AppImage.sha256 \
+              releases/version.json \
+              --clobber
+          else
+            echo "Creating new release $TAG..."
+            gh release create "$TAG" \
+              releases/Lumen-*-x86_64.AppImage \
+              releases/Lumen-*-x86_64.AppImage.sha256 \
+              releases/version.json \
+              --title "Lumen v${VERSION}" \
+              --generate-notes
+          fi
 
   # Future: Add macOS and Windows builds
   # build-macos:
