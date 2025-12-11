@@ -1,0 +1,42 @@
+# Build artifacts
+/target/
+/build/
+/releases/
+
+# Cargo lock for binaries is committed
+# Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local configuration
+.env
+.env.local
+
+# Cache
+.cache/
+
+# Node modules (for GUI)
+node_modules/
+
+# Tauri build
+/gui/src-tauri/target/
+
+# Keys (NEVER commit private keys)
+keys/.private_key
+keys/*.pem
+
+# Log files
+*.log
+logs/
+
+# Test data
+/data/

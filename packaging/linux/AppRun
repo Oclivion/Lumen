@@ -1,0 +1,35 @@
+#!/bin/bash
+# AppRun - Entry point for Lumen AppImage
+# This script sets up the environment and launches the orchestrator
+
+set -e
+
+# Get the directory where this AppImage is mounted
+APPDIR="$(dirname "$(readlink -f "$0")")"
+
+# Set up library path for bundled dependencies
+export LD_LIBRARY_PATH="${APPDIR}/usr/lib:${LD_LIBRARY_PATH}"
+
+# Set up path to find bundled binaries
+export PATH="${APPDIR}/usr/bin:${PATH}"
+
+# Set XDG directories if not set
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+
+# Default data directory
+export LUMEN_DATA_DIR="${LUMEN_DATA_DIR:-$XDG_DATA_HOME/lumen}"
+
+# Ensure data directory exists
+mkdir -p "$LUMEN_DATA_DIR"
+
+# Copy bundled configs if not present
+if [ ! -d "$LUMEN_DATA_DIR/config" ]; then
+    if [ -d "${APPDIR}/usr/share/lumen/config" ]; then
+        cp -r "${APPDIR}/usr/share/lumen/config" "$LUMEN_DATA_DIR/"
+    fi
+fi
+
+# Launch the orchestrator
+exec "${APPDIR}/usr/bin/lumen" "$@"

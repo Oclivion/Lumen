@@ -1,0 +1,28 @@
+[Desktop Entry]
+Type=Application
+Name=Lumen
+GenericName=Cardano Node
+Comment=Self-contained, auto-updating Cardano node
+Exec=lumen %U
+Icon=lumen
+Terminal=false
+Categories=Network;P2P;Finance;
+Keywords=cardano;blockchain;crypto;node;
+StartupNotify=true
+StartupWMClass=lumen
+MimeType=x-scheme-handler/cardano;
+
+# Actions for quick access
+Actions=start;stop;status;
+
+[Desktop Action start]
+Name=Start Node
+Exec=lumen start
+
+[Desktop Action stop]
+Name=Stop Node
+Exec=lumen stop
+
+[Desktop Action status]
+Name=Check Status
+Exec=lumen status

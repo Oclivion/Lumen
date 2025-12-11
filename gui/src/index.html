@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumen - Cardano Node</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a24;
+            --text-primary: #ffffff;
+            --text-secondary: #8888aa;
+            --accent: #0066ff;
+            --accent-hover: #0055dd;
+            --success: #00cc66;
+            --warning: #ffaa00;
+            --danger: #ff4444;
+            --border: #2a2a3a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent), #00ccff);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status-badge.running {
+            background: rgba(0, 204, 102, 0.15);
+            color: var(--success);
+        }
+
+        .status-badge.stopped {
+            background: rgba(136, 136, 170, 0.15);
+            color: var(--text-secondary);
+        }
+
+        .status-badge.syncing {
+            background: rgba(255, 170, 0, 0.15);
+            color: var(--warning);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .status-badge.running .status-dot {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #00ccff);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #cc3333;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .network-select {
+            padding: 10px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .log-output {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-size: 14px;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.success { border-color: var(--success); }
+        .toast.error { border-color: var(--danger); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .setup-wizard {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .setup-wizard h2 {
+            margin-bottom: 16px;
+        }
+
+        .setup-wizard p {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <div class="logo-icon">L</div>
+            <span>Lumen</span>
+        </div>
+        <div id="statusBadge" class="status-badge stopped">
+            <span class="status-dot"></span>
+            <span id="statusText">Stopped</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Setup Wizard (shown on first run) -->
+        <div id="setupWizard" class="card setup-wizard hidden">
+            <h2>Welcome to Lumen</h2>
+            <p>Your self-contained Cardano node. Let's get started.</p>
+
+            <div style="margin-bottom: 24px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--text-secondary);">Select Network</label>
+                <select id="setupNetwork" class="network-select">
+                    <option value="mainnet">Mainnet (Production)</option>
+                    <option value="preview">Preview (Testnet)</option>
+                    <option value="preprod">Preprod (Testnet)</option>
+                </select>
+            </div>
+
+            <div class="actions" style="justify-content: center;">
+                <button class="btn-primary" onclick="completeSetup()">
+                    Initialize & Start
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div id="dashboard">
+            <!-- Sync Status -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Sync Status</span>
+                    <select id="networkSelect" class="network-select">
+                        <option value="mainnet">Mainnet</option>
+                        <option value="preview">Preview</option>
+                        <option value="preprod">Preprod</option>
+                    </select>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div id="syncProgress" class="stat-value">--</div>
+                        <div class="stat-label">Sync Progress</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="tipEpoch" class="stat-value">--</div>
+                        <div class="stat-label">Epoch</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="tipSlot" class="stat-value">--</div>
+                        <div class="stat-label">Slot</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="peerCount" class="stat-value">--</div>
+                        <div class="stat-label">Peers</div>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Resource Usage -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Resources</span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div id="memoryUsage" class="stat-value">-- MB</div>
+                        <div class="stat-label">Memory</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="uptime" class="stat-value">--</div>
+                        <div class="stat-label">Uptime</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Actions</span>
+                </div>
+                <div class="actions">
+                    <button id="startBtn" class="btn-primary" onclick="startNode()">
+                        ▶ Start Node
+                    </button>
+                    <button id="stopBtn" class="btn-danger hidden" onclick="stopNode()">
+                        ⏹ Stop Node
+                    </button>
+                    <button class="btn-secondary" onclick="downloadMithril()">
+                        ⬇ Fast Sync (Mithril)
+                    </button>
+                    <button class="btn-secondary" onclick="checkUpdates()">
+                        🔄 Check Updates
+                    </button>
+                </div>
+            </div>
+
+            <!-- Logs -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Activity Log</span>
+                </div>
+                <div id="logOutput" class="log-output">Lumen GUI initialized. Ready to start node.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { invoke } = window.__TAURI__.core;
+
+        let refreshInterval = null;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkInitialStatus();
+            startRefreshLoop();
+        });
+
+        async function checkInitialStatus() {
+            try {
+                const status = await invoke('get_status');
+                updateUI(status);
+
+                // Check if first run (no config exists)
+                // For now, just show dashboard
+            } catch (e) {
+                log('Failed to get initial status: ' + e);
+            }
+        }
+
+        function startRefreshLoop() {
+            refreshInterval = setInterval(async () => {
+                try {
+                    const status = await invoke('get_status');
+                    updateUI(status);
+                } catch (e) {
+                    // Silent fail on refresh
+                }
+            }, 5000);
+        }
+
+        function updateUI(status) {
+            const badge = document.getElementById('statusBadge');
+            const statusText = document.getElementById('statusText');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+
+            if (status.running) {
+                badge.className = 'status-badge ' + (status.sync_progress < 100 ? 'syncing' : 'running');
+                statusText.textContent = status.sync_progress < 100 ? 'Syncing' : 'Running';
+                startBtn.classList.add('hidden');
+                stopBtn.classList.remove('hidden');
+            } else {
+                badge.className = 'status-badge stopped';
+                statusText.textContent = 'Stopped';
+                startBtn.classList.remove('hidden');
+                stopBtn.classList.add('hidden');
+            }
+
+            // Update stats
+            document.getElementById('syncProgress').textContent =
+                status.sync_progress ? status.sync_progress.toFixed(2) + '%' : '--';
+            document.getElementById('tipEpoch').textContent =
+                status.tip_epoch || '--';
+            document.getElementById('tipSlot').textContent =
+                status.tip_slot ? status.tip_slot.toLocaleString() : '--';
+            document.getElementById('peerCount').textContent =
+                status.peers || '--';
+            document.getElementById('memoryUsage').textContent =
+                status.memory_mb ? status.memory_mb + ' MB' : '-- MB';
+            document.getElementById('uptime').textContent =
+                status.uptime_secs ? formatUptime(status.uptime_secs) : '--';
+
+            // Update progress bar
+            document.getElementById('progressFill').style.width =
+                (status.sync_progress || 0) + '%';
+        }
+
+        function formatUptime(secs) {
+            const hours = Math.floor(secs / 3600);
+            const mins = Math.floor((secs % 3600) / 60);
+            if (hours > 0) return hours + 'h ' + mins + 'm';
+            return mins + 'm';
+        }
+
+        async function startNode() {
+            const network = document.getElementById('networkSelect').value;
+            log('Starting node on ' + network + '...');
+
+            try {
+                const result = await invoke('start_node', { network });
+                log(result);
+                showToast('Node started successfully', 'success');
+            } catch (e) {
+                log('Error: ' + e);
+                showToast('Failed to start node', 'error');
+            }
+        }
+
+        async function stopNode() {
+            log('Stopping node...');
+
+            try {
+                const result = await invoke('stop_node');
+                log(result);
+                showToast('Node stopped', 'success');
+            } catch (e) {
+                log('Error: ' + e);
+                showToast('Failed to stop node', 'error');
+            }
+        }
+
+        async function downloadMithril() {
+            const network = document.getElementById('networkSelect').value;
+            log('Downloading Mithril snapshot for ' + network + '...');
+            showToast('Starting Mithril download. This may take a while.', 'success');
+
+            try {
+                const result = await invoke('download_mithril', { network });
+                log(result);
+                showToast('Snapshot downloaded successfully', 'success');
+            } catch (e) {
+                log('Error: ' + e);
+                showToast('Failed to download snapshot', 'error');
+            }
+        }
+
+        async function checkUpdates() {
+            log('Checking for updates...');
+
+            try {
+                const update = await invoke('check_updates');
+                if (update) {
+                    log('Update available: ' + update);
+                    showToast(update, 'success');
+                } else {
+                    log('Already running latest version');
+                    showToast('Already up to date', 'success');
+                }
+            } catch (e) {
+                log('Error: ' + e);
+                showToast('Failed to check updates', 'error');
+            }
+        }
+
+        async function completeSetup() {
+            const network = document.getElementById('setupNetwork').value;
+            log('Initializing configuration for ' + network + '...');
+
+            try {
+                await invoke('init_config', { network });
+                document.getElementById('setupWizard').classList.add('hidden');
+                log('Configuration initialized. Starting node...');
+                await startNode();
+            } catch (e) {
+                log('Error: ' + e);
+                showToast('Setup failed: ' + e, 'error');
+            }
+        }
+
+        function log(message) {
+            const output = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            output.textContent = '[' + timestamp + '] ' + message + '\n' + output.textContent;
+
+            // Trim log if too long
+            const lines = output.textContent.split('\n');
+            if (lines.length > 100) {
+                output.textContent = lines.slice(0, 100).join('\n');
+            }
+        }
+
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 4000);
+        }
+    </script>
+</body>
+</html>
