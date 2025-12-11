@@ -46,8 +46,11 @@ if [ -n "$PRIVATE_KEY" ]; then
     echo "$PRIVATE_KEY" >> "$TMPKEY"
     echo "-----END PRIVATE KEY-----" >> "$TMPKEY"
 
-    # Sign the hash
-    SIGNATURE=$(echo -n "$SHA256" | openssl pkeyutl -sign -inkey "$TMPKEY" 2>/dev/null | base64 -w0) || true
+    # Sign the hash (use temp file because -rawin doesn't work with stdin)
+    TMPHASH=$(mktemp)
+    echo -n "$SHA256" > "$TMPHASH"
+    SIGNATURE=$(openssl pkeyutl -sign -inkey "$TMPKEY" -rawin -in "$TMPHASH" 2>/dev/null | base64 -w0) || true
+    rm -f "$TMPHASH"
 
     if [ -n "$SIGNATURE" ]; then
         echo "Signature: ${SIGNATURE:0:32}..."
