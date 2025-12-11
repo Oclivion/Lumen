@@ -69,14 +69,12 @@ jobs:
         run: |
           mkdir -p .cache/cardano
           cd .cache/cardano
-          MITHRIL_VERSION="2445.0"
+          MITHRIL_VERSION="2543.1-hotfix"
           curl -L -o mithril.tar.gz \
-            "https://github.com/input-output-hk/mithril/releases/download/${MITHRIL_VERSION}/mithril-${MITHRIL_VERSION}-linux-x64.tar.gz" || true
-          if [ -f mithril.tar.gz ]; then
-            tar xzf mithril.tar.gz
-            mv mithril-client "mithril-client-${MITHRIL_VERSION}" || true
-            rm -f mithril.tar.gz
-          fi
+            "https://github.com/input-output-hk/mithril/releases/download/${MITHRIL_VERSION}/mithril-${MITHRIL_VERSION}-linux-x64.tar.gz"
+          tar xzf mithril.tar.gz
+          mv mithril-client "mithril-client-${MITHRIL_VERSION}" || true
+          rm -f mithril.tar.gz
 
       - name: Build AppImage
         run: |
