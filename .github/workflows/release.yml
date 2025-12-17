@@ -135,6 +135,12 @@ jobs:
           TAG="v${VERSION}"
           REPO="${{ github.repository }}"
 
+          # Create generic filename copy for /latest/download/ compatibility
+          cd releases
+          cp "Lumen-${VERSION}-x86_64.AppImage" "Lumen-x86_64.AppImage"
+          cp "Lumen-${VERSION}-x86_64.AppImage.sha256" "Lumen-x86_64.AppImage.sha256"
+          cd ..
+
           # Create or update release
           if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             echo "Updating existing release $TAG..."
