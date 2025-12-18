@@ -49,11 +49,17 @@ export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 # Default data directory
 export LUMEN_DATA_DIR="${LUMEN_DATA_DIR:-$XDG_DATA_HOME/lumen}"
 
-# Ensure data directory exists
+# Ensure data directory exists - use auto-fix approach
 mkdir -p "$LUMEN_DATA_DIR" 2>/dev/null || {
-    echo "❌ Could not create data directory: $LUMEN_DATA_DIR" >&2
-    echo "💡 Please ensure you have write permissions to your home directory" >&2
-    exit 1
+    # GRANDMA-FRIENDLY: Auto-fix data directory issue with fallback
+    echo "🔧 Adjusting data directory location..." >&2
+    LUMEN_DATA_DIR="/tmp/lumen-$(id -u)"
+    export LUMEN_DATA_DIR
+    mkdir -p "$LUMEN_DATA_DIR" 2>/dev/null || {
+        echo "❌ Could not create data directory. Please check disk space." >&2
+        exit 1
+    }
+    echo "✅ Using temporary data directory: $LUMEN_DATA_DIR" >&2
 }
 
 # Copy bundled configs if not present

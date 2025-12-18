@@ -171,10 +171,11 @@ if [ ! -f "$APPIMAGETOOL" ]; then
     chmod +x "$APPIMAGETOOL"
 fi
 
-# Build AppImage
+# Build AppImage with integration disabled
 echo "Creating AppImage..."
 cd "$BUILD_DIR"
-ARCH=x86_64 "$APPIMAGETOOL" AppDir "Lumen-${VERSION}-x86_64.AppImage"
+# GRANDMA-FRIENDLY: Disable AppImage integration dialog by default
+APPIMAGE_SILENT_INSTALL=1 DESKTOPINTEGRATION=0 ARCH=x86_64 "$APPIMAGETOOL" --no-appstream AppDir "Lumen-${VERSION}-x86_64.AppImage"
 
 # Create zsync file for delta updates (if zsyncmake is available)
 if command -v zsyncmake &> /dev/null; then
