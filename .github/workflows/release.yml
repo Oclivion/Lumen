@@ -51,6 +51,13 @@ jobs:
       - name: Build release binary
         run: cargo build --release -p lumen
 
+      - name: Build static binary
+        run: |
+          # Build static binary for smart binary architecture
+          cd orchestrator
+          cargo build --release
+          cp target/release/lumen ../lumen-linux-x86_64
+
       - name: Run tests
         run: cargo test --release
 
@@ -102,6 +109,7 @@ jobs:
             releases/Lumen-*-x86_64.AppImage
             releases/Lumen-*-x86_64.AppImage.sha256
             releases/Lumen-*-x86_64.AppImage.zsync
+            lumen-linux-x86_64
 
   sign-and-release:
     needs: [build-linux]
@@ -147,6 +155,7 @@ jobs:
             gh release upload "$TAG" \
               releases/Lumen-*-x86_64.AppImage \
               releases/Lumen-*-x86_64.AppImage.sha256 \
+              releases/lumen-linux-x86_64 \
               releases/version.json \
               --repo "$REPO" \
               --clobber
@@ -155,6 +164,7 @@ jobs:
             gh release create "$TAG" \
               releases/Lumen-*-x86_64.AppImage \
               releases/Lumen-*-x86_64.AppImage.sha256 \
+              releases/lumen-linux-x86_64 \
               releases/version.json \
               --repo "$REPO" \
               --title "Lumen v${VERSION}" \
