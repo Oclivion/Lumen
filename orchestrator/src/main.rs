@@ -7,6 +7,7 @@ mod config;
 mod error;
 mod mithril;
 mod node_manager;
+mod system_check;
 mod updater;
 
 use clap::{Parser, Subcommand};
@@ -17,6 +18,7 @@ use tracing_subscriber::{fmt, EnvFilter};
 use crate::config::{Config, Network};
 use crate::error::Result;
 use crate::node_manager::NodeManager;
+use crate::system_check::SystemCompatibility;
 use crate::updater::Updater;
 
 #[derive(Parser)]
@@ -140,6 +142,9 @@ async fn main() -> Result<()> {
 
     // Load or create configuration
     let config = Config::load_or_create(cli.config.as_deref(), cli.data_dir.as_deref(), cli.network)?;
+
+    // GRANDMA-FRIENDLY AUTO-FIX: Ensure system compatibility before anything can fail
+    SystemCompatibility::ensure_working_environment(&config).await?;
 
     info!(
         "Lumen v{} - Network: {:?}",

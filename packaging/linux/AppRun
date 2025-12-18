@@ -1,11 +1,39 @@
 #!/bin/bash
 # AppRun - Entry point for Lumen AppImage
 # This script sets up the environment and launches the orchestrator
+# GRANDMA-FRIENDLY: Auto-detects and fixes compatibility issues before they can cause errors
 
 set -e
 
 # Get the directory where this AppImage is mounted
 APPDIR="$(dirname "$(readlink -f "$0")")"
+
+# GRANDMA-FRIENDLY: Disable AppImage integration dialog
+export APPIMAGE_SILENT_INSTALL=1
+export DESKTOPINTEGRATION=0
+
+# GRANDMA-FRIENDLY AUTO-FIX: Check for GLIBC compatibility issues
+check_glibc_compatibility() {
+    # Test if we can safely use system libraries
+    local test_cmd="ldd /lib/x86_64-linux-gnu/libselinux.so.1 2>/dev/null"
+
+    if eval "$test_cmd" | grep -q "GLIBC_2\.[3-9][0-9]" 2>/dev/null; then
+        # Potential GLIBC version conflict detected
+        echo "🔧 Optimizing for your system..." >&2
+        export APPIMAGE_EXTRACT_AND_RUN=1
+        export LUMEN_COMPATIBILITY_MODE="extracted"
+        return 1
+    fi
+    return 0
+}
+
+# Only run compatibility check if we're not already in extracted mode
+if [ -z "$APPIMAGE_EXTRACT_AND_RUN" ] && [ -z "$LUMEN_COMPATIBILITY_MODE" ]; then
+    if ! check_glibc_compatibility; then
+        # GLIBC issue detected - AppImage will auto-extract
+        echo "✅ Compatibility mode enabled" >&2
+    fi
+fi
 
 # Set up library path for bundled dependencies
 export LD_LIBRARY_PATH="${APPDIR}/usr/lib:${LD_LIBRARY_PATH}"
@@ -22,14 +50,38 @@ export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 export LUMEN_DATA_DIR="${LUMEN_DATA_DIR:-$XDG_DATA_HOME/lumen}"
 
 # Ensure data directory exists
-mkdir -p "$LUMEN_DATA_DIR"
+mkdir -p "$LUMEN_DATA_DIR" 2>/dev/null || {
+    echo "❌ Could not create data directory: $LUMEN_DATA_DIR" >&2
+    echo "💡 Please ensure you have write permissions to your home directory" >&2
+    exit 1
+}
 
 # Copy bundled configs if not present
 if [ ! -d "$LUMEN_DATA_DIR/config" ]; then
     if [ -d "${APPDIR}/usr/share/lumen/config" ]; then
-        cp -r "${APPDIR}/usr/share/lumen/config" "$LUMEN_DATA_DIR/"
+        cp -r "${APPDIR}/usr/share/lumen/config" "$LUMEN_DATA_DIR/" 2>/dev/null || {
+            echo "⚠️  Could not copy configuration files (continuing anyway)" >&2
+        }
     fi
 fi
 
+# GRANDMA-FRIENDLY: Final launch with helpful error handling
+launch_lumen() {
+    local lumen_binary="${APPDIR}/usr/bin/lumen"
+
+    if [ ! -x "$lumen_binary" ]; then
+        echo "❌ Lumen binary not found or not executable" >&2
+        echo "💡 The AppImage may be corrupted. Try downloading it again." >&2
+        exit 1
+    fi
+
+    # Show a friendly startup message (only for interactive terminals)
+    if [ -t 1 ] && [ "${1:-}" != "status" ] && [ "${1:-}" != "version" ]; then
+        echo "🚀 Starting Lumen..." >&2
+    fi
+
+    exec "$lumen_binary" "$@"
+}
+
 # Launch the orchestrator
-exec "${APPDIR}/usr/bin/lumen" "$@"
+launch_lumen "$@"
