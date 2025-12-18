@@ -224,6 +224,14 @@ impl Config {
 
     /// Get the default data directory
     pub fn default_data_dir() -> PathBuf {
+        // Try to use directory next to the binary for better disk space utilization
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                return exe_dir.join(".lumen");
+            }
+        }
+
+        // Fallback to user data directory if binary location detection fails
         dirs::data_dir()
             .map(|d| d.join("lumen"))
             .unwrap_or_else(|| PathBuf::from(".lumen"))
