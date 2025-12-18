@@ -29,64 +29,77 @@ cargo build --release -p lumen
 cp "$PROJECT_ROOT/target/release/lumen" "$BUILD_DIR/AppDir/usr/bin/"
 strip "$BUILD_DIR/AppDir/usr/bin/lumen"
 
-# Download cardano-node and cardano-cli if not cached
-CARDANO_VERSION="9.2.1"
+# Find cardano-node and mithril-client from cache (downloaded by CI or local)
 CARDANO_CACHE="$PROJECT_ROOT/.cache/cardano"
 mkdir -p "$CARDANO_CACHE"
 
-if [ ! -f "$CARDANO_CACHE/cardano-node-$CARDANO_VERSION/cardano-node" ]; then
+# Auto-detect cardano-node version from cache or download latest
+CARDANO_DIR=$(find "$CARDANO_CACHE" -maxdepth 1 -type d -name "cardano-node-*" 2>/dev/null | head -1)
+if [ -z "$CARDANO_DIR" ]; then
+    echo "Fetching latest cardano-node version..."
+    if command -v gh &> /dev/null; then
+        CARDANO_VERSION=$(gh release view --repo IntersectMBO/cardano-node --json tagName -q '.tagName' 2>/dev/null || echo "9.2.1")
+    else
+        CARDANO_VERSION="9.2.1"
+    fi
     echo "Downloading cardano-node v${CARDANO_VERSION}..."
     cd "$CARDANO_CACHE"
-
-    # Download from IOG releases
     CARDANO_URL="https://github.com/IntersectMBO/cardano-node/releases/download/${CARDANO_VERSION}/cardano-node-${CARDANO_VERSION}-linux.tar.gz"
-
-    if ! curl -L -o "cardano-node.tar.gz" "$CARDANO_URL"; then
-        echo "WARNING: Could not download cardano-node from GitHub."
-        echo "You may need to download it manually and place it in:"
-        echo "  $CARDANO_CACHE/cardano-node-$CARDANO_VERSION/"
-    else
+    if curl -L -o "cardano-node.tar.gz" "$CARDANO_URL"; then
         mkdir -p "cardano-node-$CARDANO_VERSION"
         tar xzf "cardano-node.tar.gz" -C "cardano-node-$CARDANO_VERSION" --strip-components=1
         rm "cardano-node.tar.gz"
+        CARDANO_DIR="$CARDANO_CACHE/cardano-node-$CARDANO_VERSION"
+    else
+        echo "WARNING: Could not download cardano-node."
     fi
+    cd "$PROJECT_ROOT"
 fi
 
-# Copy cardano binaries if available (check both flat and bin/ subdirectory structures)
-CARDANO_BIN_DIR="$CARDANO_CACHE/cardano-node-$CARDANO_VERSION"
-if [ -f "$CARDANO_BIN_DIR/bin/cardano-node" ]; then
-    CARDANO_BIN_DIR="$CARDANO_CACHE/cardano-node-$CARDANO_VERSION/bin"
-fi
+# Copy cardano binaries if available
+if [ -n "$CARDANO_DIR" ]; then
+    CARDANO_BIN_DIR="$CARDANO_DIR"
+    [ -f "$CARDANO_DIR/bin/cardano-node" ] && CARDANO_BIN_DIR="$CARDANO_DIR/bin"
 
-if [ -f "$CARDANO_BIN_DIR/cardano-node" ]; then
-    echo "Bundling cardano-node..."
-    cp "$CARDANO_BIN_DIR/cardano-node" "$BUILD_DIR/AppDir/usr/bin/"
-    cp "$CARDANO_BIN_DIR/cardano-cli" "$BUILD_DIR/AppDir/usr/bin/"
-    strip "$BUILD_DIR/AppDir/usr/bin/cardano-node" 2>/dev/null || true
-    strip "$BUILD_DIR/AppDir/usr/bin/cardano-cli" 2>/dev/null || true
+    if [ -f "$CARDANO_BIN_DIR/cardano-node" ]; then
+        echo "Bundling cardano-node from $CARDANO_BIN_DIR..."
+        cp "$CARDANO_BIN_DIR/cardano-node" "$BUILD_DIR/AppDir/usr/bin/"
+        cp "$CARDANO_BIN_DIR/cardano-cli" "$BUILD_DIR/AppDir/usr/bin/"
+        strip "$BUILD_DIR/AppDir/usr/bin/cardano-node" 2>/dev/null || true
+        strip "$BUILD_DIR/AppDir/usr/bin/cardano-cli" 2>/dev/null || true
+    else
+        echo "WARNING: cardano-node not found in $CARDANO_DIR"
+    fi
 else
     echo "WARNING: cardano-node not found. AppImage will require system cardano-node."
 fi
 
-# Download mithril-client if not cached
-MITHRIL_VERSION="2445.0"
-if [ ! -f "$CARDANO_CACHE/mithril-client-$MITHRIL_VERSION" ]; then
+# Auto-detect mithril-client version from cache or download latest
+MITHRIL_CLIENT=$(find "$CARDANO_CACHE" -maxdepth 1 -type f -name "mithril-client-*" 2>/dev/null | head -1)
+if [ -z "$MITHRIL_CLIENT" ]; then
+    echo "Fetching latest mithril-client version..."
+    if command -v gh &> /dev/null; then
+        MITHRIL_VERSION=$(gh release view --repo input-output-hk/mithril --json tagName -q '.tagName' 2>/dev/null || echo "2543.1-hotfix")
+    else
+        MITHRIL_VERSION="2543.1-hotfix"
+    fi
     echo "Downloading mithril-client v${MITHRIL_VERSION}..."
     MITHRIL_URL="https://github.com/input-output-hk/mithril/releases/download/${MITHRIL_VERSION}/mithril-${MITHRIL_VERSION}-linux-x64.tar.gz"
-
     if curl -L -o "$CARDANO_CACHE/mithril.tar.gz" "$MITHRIL_URL" 2>/dev/null; then
         cd "$CARDANO_CACHE"
         tar xzf mithril.tar.gz
         mv mithril-client "mithril-client-$MITHRIL_VERSION" 2>/dev/null || true
         rm -f mithril.tar.gz
+        MITHRIL_CLIENT="$CARDANO_CACHE/mithril-client-$MITHRIL_VERSION"
+        cd "$PROJECT_ROOT"
     else
         echo "WARNING: Could not download mithril-client."
     fi
 fi
 
-if [ -f "$CARDANO_CACHE/mithril-client-$MITHRIL_VERSION" ]; then
-    echo "Bundling mithril-client..."
-    cp "$CARDANO_CACHE/mithril-client-$MITHRIL_VERSION" "$BUILD_DIR/AppDir/usr/bin/mithril-client"
+if [ -n "$MITHRIL_CLIENT" ] && [ -f "$MITHRIL_CLIENT" ]; then
+    echo "Bundling mithril-client from $MITHRIL_CLIENT..."
+    cp "$MITHRIL_CLIENT" "$BUILD_DIR/AppDir/usr/bin/mithril-client"
     strip "$BUILD_DIR/AppDir/usr/bin/mithril-client" 2>/dev/null || true
 fi
 

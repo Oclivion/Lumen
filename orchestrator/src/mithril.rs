@@ -550,15 +550,17 @@ mod tests {
     fn test_snapshot_epoch() {
         let snapshot = Snapshot {
             digest: "abc123".into(),
+            network: "mainnet".into(),
             beacon: SnapshotBeacon {
-                network: "mainnet".into(),
                 epoch: 500,
                 immutable_file_number: 12345,
             },
             certificate_hash: "def456".into(),
             size: 1000000,
+            ancillary_size: None,
             created_at: "2025-01-01T00:00:00Z".into(),
             locations: vec!["https://example.com/snapshot.tar.zst".into()],
+            ancillary_locations: None,
             compression_algorithm: Some("zstd".into()),
             cardano_node_version: Some("9.2.1".into()),
         };

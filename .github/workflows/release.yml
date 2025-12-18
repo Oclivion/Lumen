@@ -20,9 +20,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
           components: rustfmt, clippy
 
       - name: Cache cargo
@@ -43,7 +42,11 @@ jobs:
             libgmp-dev \
             zstd \
             fuse \
-            libfuse2
+            libfuse2 \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
 
       - name: Build release binary
         run: cargo build --release -p lumen
@@ -52,28 +55,38 @@ jobs:
         run: cargo test --release
 
       - name: Download cardano-node
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p .cache/cardano
           cd .cache/cardano
-          CARDANO_VERSION="9.2.1"
-          curl -L -o cardano-node.tar.gz \
-            "https://github.com/IntersectMBO/cardano-node/releases/download/${CARDANO_VERSION}/cardano-node-${CARDANO_VERSION}-linux.tar.gz"
+          # Fetch latest stable cardano-node release
+          CARDANO_VERSION=$(gh release view --repo IntersectMBO/cardano-node --json tagName -q '.tagName')
+          echo "Downloading cardano-node version: ${CARDANO_VERSION}"
+          # Use gh release download for authenticated, reliable downloads
+          gh release download "${CARDANO_VERSION}" \
+            --repo IntersectMBO/cardano-node \
+            --pattern "cardano-node-${CARDANO_VERSION}-linux.tar.gz"
           mkdir -p "cardano-node-${CARDANO_VERSION}"
-          tar xzf cardano-node.tar.gz -C "cardano-node-${CARDANO_VERSION}" --strip-components=1
-          rm cardano-node.tar.gz
+          tar xzf "cardano-node-${CARDANO_VERSION}-linux.tar.gz" -C "cardano-node-${CARDANO_VERSION}" --strip-components=1
+          rm "cardano-node-${CARDANO_VERSION}-linux.tar.gz"
 
       - name: Download mithril-client
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p .cache/cardano
           cd .cache/cardano
-          MITHRIL_VERSION="2445.0"
-          curl -L -o mithril.tar.gz \
-            "https://github.com/input-output-hk/mithril/releases/download/${MITHRIL_VERSION}/mithril-${MITHRIL_VERSION}-linux-x64.tar.gz" || true
-          if [ -f mithril.tar.gz ]; then
-            tar xzf mithril.tar.gz
-            mv mithril-client "mithril-client-${MITHRIL_VERSION}" || true
-            rm -f mithril.tar.gz
-          fi
+          # Fetch latest stable mithril release (excludes pre-releases)
+          MITHRIL_VERSION=$(gh release view --repo input-output-hk/mithril --json tagName -q '.tagName')
+          echo "Downloading mithril-client version: ${MITHRIL_VERSION}"
+          # Use gh release download for authenticated, reliable downloads
+          gh release download "${MITHRIL_VERSION}" \
+            --repo input-output-hk/mithril \
+            --pattern "mithril-${MITHRIL_VERSION}-linux-x64.tar.gz"
+          tar xzf "mithril-${MITHRIL_VERSION}-linux-x64.tar.gz"
+          mv mithril-client "mithril-client-${MITHRIL_VERSION}" || true
+          rm -f "mithril-${MITHRIL_VERSION}-linux-x64.tar.gz"
 
       - name: Build AppImage
         run: |
@@ -104,12 +117,6 @@ jobs:
           path: releases
           merge-multiple: true
 
-      - name: Install Rust
-        uses: dtolnay/rust-action@stable
-
-      - name: Install cargo-script
-        run: cargo install cargo-script
-
       - name: Sign releases
         env:
           LUMEN_SIGNING_KEY: ${{ secrets.LUMEN_SIGNING_KEY }}
@@ -120,15 +127,39 @@ jobs:
           ./packaging/sign-release.sh "$VERSION"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            releases/Lumen-*-x86_64.AppImage
-            releases/Lumen-*-x86_64.AppImage.sha256
-            releases/version.json
-          generate_release_notes: true
-          draft: false
-          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+          VERSION="${VERSION#v}"
+          TAG="v${VERSION}"
+          REPO="${{ github.repository }}"
+
+          # Create generic filename copy for /latest/download/ compatibility
+          cd releases
+          cp "Lumen-${VERSION}-x86_64.AppImage" "Lumen-x86_64.AppImage"
+          cp "Lumen-${VERSION}-x86_64.AppImage.sha256" "Lumen-x86_64.AppImage.sha256"
+          cd ..
+
+          # Create or update release
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            echo "Updating existing release $TAG..."
+            gh release upload "$TAG" \
+              releases/Lumen-*-x86_64.AppImage \
+              releases/Lumen-*-x86_64.AppImage.sha256 \
+              releases/version.json \
+              --repo "$REPO" \
+              --clobber
+          else
+            echo "Creating new release $TAG..."
+            gh release create "$TAG" \
+              releases/Lumen-*-x86_64.AppImage \
+              releases/Lumen-*-x86_64.AppImage.sha256 \
+              releases/version.json \
+              --repo "$REPO" \
+              --title "Lumen v${VERSION}" \
+              --generate-notes
+          fi
 
   # Future: Add macOS and Windows builds
   # build-macos:

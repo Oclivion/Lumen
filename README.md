@@ -19,7 +19,7 @@ Lumen packages the Cardano node into a user-friendly application that runs out-o
 
 ```bash
 # Download
-curl -LO https://github.com/user/lumen/releases/latest/download/Lumen-x86_64.AppImage
+curl -LO https://github.com/Oclivion/Lumen/releases/latest/download/Lumen-x86_64.AppImage
 chmod +x Lumen-x86_64.AppImage
 
 # Run
@@ -121,8 +121,8 @@ Mithril snapshots are verified via:
 
 ```bash
 # Clone
-git clone https://github.com/user/lumen
-cd lumen
+git clone https://github.com/Oclivion/Lumen
+cd Lumen
 
 # Build
 cargo build --release
@@ -133,6 +133,50 @@ cargo build --release
 # Build AppImage
 ./packaging/linux/build-appimage.sh
 ```
+
+## Release Signing
+
+Releases are signed with Ed25519 to prove they come from the official source. Signing is **optional** - releases will still work without it, but won't have cryptographic verification.
+
+### Step 1: Generate a Signing Key
+
+Run this command to create a new key:
+
+```bash
+openssl genpkey -algorithm ed25519 -out lumen-signing.pem
+```
+
+This creates a file called `lumen-signing.pem`. **Keep this file secret and backed up!**
+
+### Step 2: Get the Key Value for GitHub
+
+Run this command to extract the key value:
+
+```bash
+grep -v "^-" lumen-signing.pem | tr -d '\n' && echo
+```
+
+This outputs a long string like `MC4CAQAwBQYDK2VwBCIEIxxxxxxxxx...`. Copy this entire string.
+
+### Step 3: Add the Secret to GitHub
+
+1. Go to https://github.com/Oclivion/Lumen/settings/secrets/actions
+2. Click the green **"New repository secret"** button
+3. In the **Name** field, type: `LUMEN_SIGNING_KEY`
+4. In the **Secret** field, paste the string you copied in Step 2
+5. Click **"Add secret"**
+
+That's it! Future releases will now be automatically signed.
+
+### Step 4: Get the Public Key (Optional)
+
+If you want to verify signatures, get the public key with:
+
+```bash
+openssl pkey -in lumen-signing.pem -pubout
+```
+
+This public key should be added to `orchestrator/src/config.rs` for the app to verify updates.
 
 ## Project Structure
 
@@ -166,7 +210,7 @@ lumen/
 - [x] Linux AppImage with auto-updates
 - [x] Mithril fast sync integration
 - [x] Ed25519 signature verification
-- [ ] Tauri GUI with system tray
+- [x] Tauri GUI with system tray
 - [ ] macOS DMG with Sparkle updates
 - [ ] Windows installer with Squirrel
 - [ ] Stake pool operator mode
