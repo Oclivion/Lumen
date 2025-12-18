@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
-members = ["orchestrator", "gui/src-tauri"]
+members = ["orchestrator", "gui/src-tauri", "disk_debug"]
 
 [workspace.package]
-version = "0.3.4"
+version = "0.3.5"
 edition = "2021"
 authors = ["Lumen Contributors"]
 license = "MIT OR Apache-2.0"
