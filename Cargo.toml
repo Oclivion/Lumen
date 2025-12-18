@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Lumen Contributors"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/user/lumen"
+repository = "https://github.com/Oclivion/Lumen"
 description = "Self-contained, auto-updating Cardano node distribution"
 
 [workspace.dependencies]

@@ -202,10 +202,10 @@ impl Config {
             update: UpdateConfig {
                 auto_check: true,
                 check_interval_hours: 24,
-                manifest_url: "https://github.com/user/lumen/releases/latest/download/version.json".into(),
+                manifest_url: "https://github.com/Oclivion/Lumen/releases/latest/download/version.json".into(),
                 public_key: "a8c32e3712fc17b6d99548dce6cdb6a79b1278022b01dab113fbcb4cdaadadb5".into(),
                 mirrors: vec![
-                    "https://github.com/user/lumen/releases/download".into(),
+                    "https://github.com/Oclivion/Lumen/releases/download".into(),
                 ],
                 min_version: None,
             },

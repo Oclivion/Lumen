@@ -1,0 +1,13 @@
+{
+  "version": "0.3.1",
+  "release_notes": "Fixed cardano-cli Support\n\nCritical Fix: Resolves cardano-cli binary missing error that prevented node startup.\n\n- cardano-cli Extraction: Now properly extracts and caches both cardano-node and cardano-cli\n- Start Command Works: Eliminates BinaryNotFound(\"cardano-cli\") error\n- Smart Caching: Caches both binaries for instant subsequent runs\n- Performance: Still maintains 0.073s cached startup time\n\nAfter first download, the system caches:\n- cardano-node-10.5.3 (90MB) - Core Cardano node\n- cardano-cli-10.5.3 (87MB) - Command line interface\n\nThis release completes the static binary architecture for truly functional grandma-friendly Cardano node deployment.",
+  "released_at": "2025-12-18T11:47:48Z",
+  "downloads": {
+    "linux_x86_64": "https://github.com/Oclivion/Lumen/releases/download/v0.3.1/lumen-linux-x86_64",
+    "linux_aarch64": null,
+    "darwin_x86_64": null,
+    "darwin_aarch64": null,
+    "windows_x86_64": null
+  },
+  "size": 10268096
+}
