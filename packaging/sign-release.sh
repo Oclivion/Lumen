@@ -20,17 +20,30 @@ fi
 
 RELEASES_DIR="$PROJECT_ROOT/releases"
 APPIMAGE="$RELEASES_DIR/Lumen-${VERSION}-x86_64.AppImage"
+STATIC_BINARY="$RELEASES_DIR/lumen-linux-x86_64"
 
-if [ ! -f "$APPIMAGE" ]; then
-    echo "ERROR: AppImage not found: $APPIMAGE"
-    echo "Run build-appimage.sh first"
+# Determine which type of release this is
+RELEASE_TYPE=""
+MAIN_FILE=""
+
+if [ -f "$STATIC_BINARY" ]; then
+    RELEASE_TYPE="static"
+    MAIN_FILE="$STATIC_BINARY"
+    echo "Processing static binary release v${VERSION}..."
+elif [ -f "$APPIMAGE" ]; then
+    RELEASE_TYPE="appimage"
+    MAIN_FILE="$APPIMAGE"
+    echo "Processing AppImage release v${VERSION}..."
+else
+    echo "ERROR: No release files found:"
+    echo "  Static binary: $STATIC_BINARY"
+    echo "  AppImage: $APPIMAGE"
+    echo "Run build process first"
     exit 1
 fi
 
-echo "Processing release v${VERSION}..."
-
 # Compute SHA256
-SHA256=$(sha256sum "$APPIMAGE" | cut -d' ' -f1)
+SHA256=$(sha256sum "$MAIN_FILE" | cut -d' ' -f1)
 echo "SHA256: $SHA256"
 
 # Sign if key is available
@@ -63,7 +76,14 @@ else
 fi
 
 # Get file size
-SIZE=$(stat -c%s "$APPIMAGE" 2>/dev/null || stat -f%z "$APPIMAGE")
+SIZE=$(stat -c%s "$MAIN_FILE" 2>/dev/null || stat -f%z "$MAIN_FILE")
+
+# Set download URL based on release type
+if [ "$RELEASE_TYPE" = "static" ]; then
+    DOWNLOAD_URL="https://github.com/Oclivion/Lumen/releases/download/v${VERSION}/lumen-linux-x86_64"
+else
+    DOWNLOAD_URL="https://github.com/Oclivion/Lumen/releases/download/v${VERSION}/Lumen-${VERSION}-x86_64.AppImage"
+fi
 
 # Generate version.json
 cat > "$RELEASES_DIR/version.json" << EOF
@@ -71,11 +91,10 @@ cat > "$RELEASES_DIR/version.json" << EOF
   "version": "${VERSION}",
   "sha256": "${SHA256}",
   "signature": $(if [ -n "$SIGNATURE" ]; then echo "\"$SIGNATURE\""; else echo "null"; fi),
-  "min_version": null,
-  "release_notes": "Lumen v${VERSION}",
+  "release_notes": "Mithril Protocol Compatibility Fixed\\n\\nCritical Fix: Resolves Mithril certificate parsing errors during fast sync.\\n\\n- Certificate Structure: Fixed metadata.version field mapping (was incorrectly expecting protocol_version)\\n- Fast Sync: Complete Mithril integration now working for rapid blockchain bootstrapping\\n- Protocol Compatibility: Full alignment with live Mithril aggregator API responses\\n- Maximum Robustness: Certificate chain validation working flawlessly\\n- Zero Configuration: Automatic fast sync when no local chain data exists\\n\\nThis release achieves complete Mithril fast sync functionality with maximum architectural robustness.",
   "released_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "downloads": {
-    "linux_x86_64": "https://github.com/Oclivion/Lumen/releases/download/v${VERSION}/Lumen-${VERSION}-x86_64.AppImage",
+    "linux_x86_64": "${DOWNLOAD_URL}",
     "linux_aarch64": null,
     "darwin_x86_64": null,
     "darwin_aarch64": null,
@@ -89,6 +108,10 @@ echo ""
 echo "Generated: $RELEASES_DIR/version.json"
 echo ""
 echo "Files ready for release:"
-echo "  - Lumen-${VERSION}-x86_64.AppImage"
-echo "  - Lumen-${VERSION}-x86_64.AppImage.sha256"
+if [ "$RELEASE_TYPE" = "static" ]; then
+    echo "  - lumen-linux-x86_64"
+else
+    echo "  - Lumen-${VERSION}-x86_64.AppImage"
+    echo "  - Lumen-${VERSION}-x86_64.AppImage.sha256"
+fi
 echo "  - version.json"
