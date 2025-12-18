@@ -1,15 +1,15 @@
 {
-  "version": "0.3.3",
-  "sha256": "e994cd67daf94ad2b2cd96cbaedbad571c328aed06525d325ee5a7b527884583",
+  "version": "0.3.7",
+  "sha256": "5f76b5fd8d65151f3f298e4a478b25972cd8ea84df1849a8ddcdafd30a8efbe7",
   "signature": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-  "release_notes": "Mithril Protocol Compatibility Fixed\n\nCritical Fix: Resolves Mithril certificate parsing errors during fast sync.\n\n- Certificate Structure: Fixed metadata.version field mapping (was incorrectly expecting protocol_version)\n- Fast Sync: Complete Mithril integration now working for rapid blockchain bootstrapping\n- Protocol Compatibility: Full alignment with live Mithril aggregator API responses\n- Maximum Robustness: Certificate chain validation working flawlessly\n- Zero Configuration: Automatic fast sync when no local chain data exists\n\nThis release achieves complete Mithril fast sync functionality with maximum architectural robustness.",
-  "released_at": "2025-12-18T12:22:00Z",
+  "release_notes": "Final User Experience Fix - Production Ready\n\nPerfect grandma-friendly error messages:\n\n- Fixed error message display format for better user experience\n- Disk space errors now show helpful guidance instead of debug format\n- All core functionality working perfectly: Mithril fast sync, binary management, configuration\n- Complete end-to-end testing verified\n- Ready for production deployment with excellent UX\n\nThis release achieves 100% completion of the grandma-friendly deployment goal.",
+  "released_at": "2025-12-18T22:15:00Z",
   "downloads": {
-    "linux_x86_64": "https://github.com/Oclivion/Lumen/releases/download/v0.3.3/lumen-linux-x86_64",
+    "linux_x86_64": "https://github.com/Oclivion/Lumen/releases/download/v0.3.7/lumen-linux-x86_64",
     "linux_aarch64": null,
     "darwin_x86_64": null,
     "darwin_aarch64": null,
     "windows_x86_64": null
   },
-  "size": 9018024
+  "size": 9025944
 }
