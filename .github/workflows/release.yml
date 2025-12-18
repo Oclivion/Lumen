@@ -54,9 +54,8 @@ jobs:
       - name: Build static binary
         run: |
           # Build static binary for smart binary architecture
-          cd orchestrator
-          cargo build --release
-          cp target/release/lumen ../lumen-linux-x86_64
+          cargo build --release -p lumen
+          cp target/release/lumen lumen-linux-x86_64
 
       - name: Run tests
         run: cargo test --release
