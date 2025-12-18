@@ -192,15 +192,21 @@ jobs:
 
           cd ..
 
+          # Prefix assets with releases/ since we're now in parent directory
+          PREFIXED_ASSETS=""
+          for asset in $RELEASE_ASSETS; do
+            PREFIXED_ASSETS="$PREFIXED_ASSETS releases/$asset"
+          done
+
           # Create or update release
           if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             echo "Updating existing release $TAG..."
-            gh release upload "$TAG" releases/$RELEASE_ASSETS \
+            gh release upload "$TAG" $PREFIXED_ASSETS \
               --repo "$REPO" \
               --clobber
           else
             echo "Creating new release $TAG..."
-            gh release create "$TAG" releases/$RELEASE_ASSETS \
+            gh release create "$TAG" $PREFIXED_ASSETS \
               --repo "$REPO" \
               --title "Lumen v${VERSION}" \
               --generate-notes
