@@ -1,13 +1,15 @@
 {
-  "version": "0.3.1",
-  "release_notes": "Fixed cardano-cli Support\n\nCritical Fix: Resolves cardano-cli binary missing error that prevented node startup.\n\n- cardano-cli Extraction: Now properly extracts and caches both cardano-node and cardano-cli\n- Start Command Works: Eliminates BinaryNotFound(\"cardano-cli\") error\n- Smart Caching: Caches both binaries for instant subsequent runs\n- Performance: Still maintains 0.073s cached startup time\n\nAfter first download, the system caches:\n- cardano-node-10.5.3 (90MB) - Core Cardano node\n- cardano-cli-10.5.3 (87MB) - Command line interface\n\nThis release completes the static binary architecture for truly functional grandma-friendly Cardano node deployment.",
-  "released_at": "2025-12-18T11:47:48Z",
+  "version": "0.3.3",
+  "sha256": "e994cd67daf94ad2b2cd96cbaedbad571c328aed06525d325ee5a7b527884583",
+  "signature": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  "release_notes": "Mithril Protocol Compatibility Fixed\n\nCritical Fix: Resolves Mithril certificate parsing errors during fast sync.\n\n- Certificate Structure: Fixed metadata.version field mapping (was incorrectly expecting protocol_version)\n- Fast Sync: Complete Mithril integration now working for rapid blockchain bootstrapping\n- Protocol Compatibility: Full alignment with live Mithril aggregator API responses\n- Maximum Robustness: Certificate chain validation working flawlessly\n- Zero Configuration: Automatic fast sync when no local chain data exists\n\nThis release achieves complete Mithril fast sync functionality with maximum architectural robustness.",
+  "released_at": "2025-12-18T12:22:00Z",
   "downloads": {
-    "linux_x86_64": "https://github.com/Oclivion/Lumen/releases/download/v0.3.1/lumen-linux-x86_64",
+    "linux_x86_64": "https://github.com/Oclivion/Lumen/releases/download/v0.3.3/lumen-linux-x86_64",
     "linux_aarch64": null,
     "darwin_x86_64": null,
     "darwin_aarch64": null,
     "windows_x86_64": null
   },
-  "size": 10268096
+  "size": 9018024
 }

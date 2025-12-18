@@ -51,12 +51,13 @@ pub struct Certificate {
     pub hash: String,
     pub previous_hash: String,
     pub epoch: u64,
-    pub beacon: CertificateBeacon,
+    pub signed_entity_type: serde_json::Value,
     pub metadata: CertificateMetadata,
     pub protocol_message: ProtocolMessage,
     pub signed_message: String,
     pub aggregate_verification_key: String,
-    pub multi_signature: String,
+    pub multi_signature: serde_json::Value,
+    #[serde(default)]
     pub genesis_signature: Option<String>,
 }
 
@@ -70,11 +71,17 @@ pub struct CertificateBeacon {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CertificateMetadata {
     pub network: String,
-    pub protocol_version: String,
-    pub protocol_parameters: serde_json::Value,
+    pub version: String,
+    pub parameters: serde_json::Value,
     pub initiated_at: String,
     pub sealed_at: String,
-    pub total_signers: u64,
+    pub signers: Vec<Signer>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Signer {
+    pub party_id: String,
+    pub stake: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -273,15 +280,23 @@ impl MithrilClient {
             "Certificate {} (epoch {}) - {} signers",
             &cert.hash[..16],
             cert.epoch,
-            cert.metadata.total_signers
+            cert.metadata.signers.len()
         );
 
         // Basic sanity checks
-        if cert.metadata.total_signers == 0 {
+        if cert.metadata.signers.is_empty() {
             return Err(LumenError::MithrilCertificateInvalid);
         }
 
-        if cert.multi_signature.is_empty() && cert.genesis_signature.is_none() {
+        // Check multi_signature is not null/empty
+        let is_multi_sig_empty = match &cert.multi_signature {
+            serde_json::Value::Null => true,
+            serde_json::Value::String(s) => s.is_empty(),
+            serde_json::Value::Array(a) => a.is_empty(),
+            _ => false,
+        };
+
+        if is_multi_sig_empty && cert.genesis_signature.is_none() {
             return Err(LumenError::MithrilCertificateInvalid);
         }
 
