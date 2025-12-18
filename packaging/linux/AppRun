@@ -50,18 +50,21 @@ export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 export LUMEN_DATA_DIR="${LUMEN_DATA_DIR:-$XDG_DATA_HOME/lumen}"
 
 # Ensure data directory exists - use auto-fix approach
-mkdir -p "$LUMEN_DATA_DIR" 2>/dev/null || {
+if mkdir -p "$LUMEN_DATA_DIR" 2>/dev/null; then
+    echo "✅ Using data directory: $LUMEN_DATA_DIR" >&2
+else
     # GRANDMA-FRIENDLY: Auto-fix data directory issue with fallback
     echo "🔧 Adjusting data directory location..." >&2
     # Use static fallback to avoid GLIBC issues with id command
     LUMEN_DATA_DIR="/tmp/lumen-user"
     export LUMEN_DATA_DIR
-    mkdir -p "$LUMEN_DATA_DIR" 2>/dev/null || {
-        echo "❌ Could not create data directory. Please check disk space." >&2
-        exit 1
-    }
-    echo "✅ Using temporary data directory: $LUMEN_DATA_DIR" >&2
-}
+    if mkdir -p "$LUMEN_DATA_DIR" 2>/dev/null; then
+        echo "✅ Using temporary data directory: $LUMEN_DATA_DIR" >&2
+    else
+        # Final fallback - just proceed and let Rust auto-fix handle it
+        echo "⚠️  Directory creation failed, continuing with auto-fix system..." >&2
+    fi
+fi
 
 # Copy bundled configs if not present
 if [ ! -d "$LUMEN_DATA_DIR/config" ]; then
