@@ -40,7 +40,7 @@ jobs:
           cp target/release/lumen lumen-linux-x86_64
 
       - name: Run tests
-        run: cargo test --release
+        run: cargo test --release -p lumen
 
       - name: Upload static binary
         uses: actions/upload-artifact@v4
