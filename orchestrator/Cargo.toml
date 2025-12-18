@@ -49,6 +49,10 @@ async-compression.workspace = true
 tokio-util.workspace = true
 semver.workspace = true
 
+# For smart binary management
+tar = "0.4"
+flate2 = "1.0"
+
 # Platform-specific
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

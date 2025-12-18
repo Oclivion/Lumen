@@ -66,17 +66,17 @@ pub struct NodeManager {
 }
 
 impl NodeManager {
-    /// Create a new NodeManager
-    pub fn new(config: Config) -> Result<Self> {
-        // Find node binary
-        let node_binary = config
-            .node_binary
-            .clone()
-            .or_else(|| Self::find_bundled_binary("cardano-node"))
-            .or_else(|| which::which("cardano-node").ok())
-            .ok_or_else(|| LumenError::BinaryNotFound("cardano-node".into()))?;
+    /// Create a new NodeManager with optimal cardano-node binary
+    pub fn new_with_binary(config: Config, node_binary: PathBuf) -> Result<Self> {
+        // Use provided optimal binary
+        let node_binary = if config.node_binary.is_some() {
+            // User explicitly specified binary takes precedence
+            config.node_binary.clone().unwrap()
+        } else {
+            node_binary
+        };
 
-        // Find CLI binary
+        // Find CLI binary (keep existing logic for now)
         let cli_binary = config
             .cli_binary
             .clone()
@@ -92,6 +92,19 @@ impl NodeManager {
             node_binary,
             cli_binary,
         })
+    }
+
+    /// Create a new NodeManager (legacy method for compatibility)
+    pub fn new(config: Config) -> Result<Self> {
+        // Find node binary using old logic (fallback)
+        let node_binary = config
+            .node_binary
+            .clone()
+            .or_else(|| Self::find_bundled_binary("cardano-node"))
+            .or_else(|| which::which("cardano-node").ok())
+            .ok_or_else(|| LumenError::BinaryNotFound("cardano-node".into()))?;
+
+        Self::new_with_binary(config, node_binary)
     }
 
     /// Find bundled binary relative to the executable

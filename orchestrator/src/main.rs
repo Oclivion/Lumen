@@ -3,22 +3,25 @@
 //! This orchestrator manages the cardano-node process, handles automatic updates,
 //! and provides Mithril snapshot support for fast initial sync.
 
+mod binary_manager;
 mod config;
 mod error;
 mod mithril;
 mod node_manager;
 mod system_check;
+mod system_detect;
 mod updater;
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use tracing::{info, Level};
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::EnvFilter;
 
+use crate::binary_manager::BinaryManager;
 use crate::config::{Config, Network};
 use crate::error::Result;
 use crate::node_manager::NodeManager;
-use crate::system_check::SystemCompatibility;
+use crate::system_detect::SystemProfile;
 use crate::updater::Updater;
 
 #[derive(Parser)]
@@ -143,14 +146,15 @@ async fn main() -> Result<()> {
     // Load or create configuration
     let config = Config::load_or_create(cli.config.as_deref(), cli.data_dir.as_deref(), cli.network)?;
 
-    // GRANDMA-FRIENDLY AUTO-FIX: Ensure system compatibility before anything can fail
-    SystemCompatibility::ensure_working_environment(&config).await?;
+    // GRANDMA-FRIENDLY SMART BINARY: Detect system and prepare optimal cardano-node
+    info!("🚀 Starting Lumen v{} - Network: {:?}", env!("CARGO_PKG_VERSION"), config.network);
 
-    info!(
-        "Lumen v{} - Network: {:?}",
-        env!("CARGO_PKG_VERSION"),
-        config.network
-    );
+    let system_profile = SystemProfile::detect()?;
+    let binary_manager = BinaryManager::new(config.clone());
+
+    // Ensure we have an optimal cardano-node binary for this system
+    let cardano_node_path = binary_manager.get_optimal_cardano_node(&system_profile).await?;
+    info!("🎯 Using cardano-node: {}", cardano_node_path.display());
 
     match cli.command {
         Commands::Start {
@@ -158,7 +162,7 @@ async fn main() -> Result<()> {
             skip_update_check,
             mithril,
         } => {
-            let mut manager = NodeManager::new(config.clone())?;
+            let mut manager = NodeManager::new_with_binary(config.clone(), cardano_node_path.clone())?;
 
             // Check for updates unless skipped
             if !skip_update_check {
@@ -184,12 +188,12 @@ async fn main() -> Result<()> {
         }
 
         Commands::Stop { force } => {
-            let manager = NodeManager::new(config)?;
+            let manager = NodeManager::new_with_binary(config, cardano_node_path.clone())?;
             manager.stop(force).await?;
         }
 
         Commands::Status => {
-            let manager = NodeManager::new(config)?;
+            let manager = NodeManager::new_with_binary(config, cardano_node_path.clone())?;
             let status = manager.status().await?;
             println!("{}", status);
         }
