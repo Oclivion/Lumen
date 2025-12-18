@@ -14,7 +14,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-linux:
+  build-static-binary:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,41 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-static-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build static binary
+        run: |
+          # Build static binary for smart binary architecture
+          cargo build --release -p lumen
+          cp target/release/lumen lumen-linux-x86_64
+
+      - name: Run tests
+        run: cargo test --release
+
+      - name: Upload static binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-binary
+          path: lumen-linux-x86_64
+
+  build-appimage:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-appimage-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install dependencies
         run: |
@@ -50,15 +84,6 @@ jobs:
 
       - name: Build release binary
         run: cargo build --release -p lumen
-
-      - name: Build static binary
-        run: |
-          # Build static binary for smart binary architecture
-          cargo build --release -p lumen
-          cp target/release/lumen lumen-linux-x86_64
-
-      - name: Run tests
-        run: cargo test --release
 
       - name: Download cardano-node
         env:
@@ -103,26 +128,33 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: linux-x86_64
+          name: appimage-x86_64
           path: |
             releases/Lumen-*-x86_64.AppImage
             releases/Lumen-*-x86_64.AppImage.sha256
             releases/Lumen-*-x86_64.AppImage.zsync
-            lumen-linux-x86_64
 
   sign-and-release:
-    needs: [build-linux]
+    needs: [build-static-binary, build-appimage]
+    if: always() && needs.build-static-binary.result == 'success'
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download static binary
         uses: actions/download-artifact@v4
         with:
+          name: static-binary
           path: releases
-          merge-multiple: true
+
+      - name: Download AppImage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: appimage-x86_64
+          path: releases
+        continue-on-error: true
 
       - name: Sign releases
         env:
@@ -142,29 +174,33 @@ jobs:
           TAG="v${VERSION}"
           REPO="${{ github.repository }}"
 
-          # Create generic filename copy for /latest/download/ compatibility
+          # Prepare release assets
           cd releases
-          cp "Lumen-${VERSION}-x86_64.AppImage" "Lumen-x86_64.AppImage"
-          cp "Lumen-${VERSION}-x86_64.AppImage.sha256" "Lumen-x86_64.AppImage.sha256"
+
+          # Always include static binary and version
+          RELEASE_ASSETS="lumen-linux-x86_64 version.json"
+
+          # Include AppImage if available
+          if [ -f "Lumen-${VERSION}-x86_64.AppImage" ]; then
+            echo "AppImage build successful, including in release"
+            cp "Lumen-${VERSION}-x86_64.AppImage" "Lumen-x86_64.AppImage"
+            cp "Lumen-${VERSION}-x86_64.AppImage.sha256" "Lumen-x86_64.AppImage.sha256"
+            RELEASE_ASSETS="$RELEASE_ASSETS Lumen-*-x86_64.AppImage Lumen-*-x86_64.AppImage.sha256"
+          else
+            echo "AppImage not available, releasing static binary only"
+          fi
+
           cd ..
 
           # Create or update release
           if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             echo "Updating existing release $TAG..."
-            gh release upload "$TAG" \
-              releases/Lumen-*-x86_64.AppImage \
-              releases/Lumen-*-x86_64.AppImage.sha256 \
-              releases/lumen-linux-x86_64 \
-              releases/version.json \
+            gh release upload "$TAG" releases/$RELEASE_ASSETS \
               --repo "$REPO" \
               --clobber
           else
             echo "Creating new release $TAG..."
-            gh release create "$TAG" \
-              releases/Lumen-*-x86_64.AppImage \
-              releases/Lumen-*-x86_64.AppImage.sha256 \
-              releases/lumen-linux-x86_64 \
-              releases/version.json \
+            gh release create "$TAG" releases/$RELEASE_ASSETS \
               --repo "$REPO" \
               --title "Lumen v${VERSION}" \
               --generate-notes
