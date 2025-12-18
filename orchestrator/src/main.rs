@@ -152,9 +152,12 @@ async fn main() -> Result<()> {
     let system_profile = SystemProfile::detect()?;
     let binary_manager = BinaryManager::new(config.clone());
 
-    // Ensure we have an optimal cardano-node binary for this system
+    // Ensure we have optimal cardano-node and cardano-cli binaries for this system
     let cardano_node_path = binary_manager.get_optimal_cardano_node(&system_profile).await?;
     info!("🎯 Using cardano-node: {}", cardano_node_path.display());
+
+    let cardano_cli_path = binary_manager.get_cardano_cli(&system_profile)?;
+    info!("🎯 Using cardano-cli: {}", cardano_cli_path.display());
 
     match cli.command {
         Commands::Start {
@@ -162,7 +165,7 @@ async fn main() -> Result<()> {
             skip_update_check,
             mithril,
         } => {
-            let mut manager = NodeManager::new_with_binary(config.clone(), cardano_node_path.clone())?;
+            let mut manager = NodeManager::new_with_binaries(config.clone(), cardano_node_path.clone(), cardano_cli_path.clone())?;
 
             // Check for updates unless skipped
             if !skip_update_check {
@@ -188,12 +191,12 @@ async fn main() -> Result<()> {
         }
 
         Commands::Stop { force } => {
-            let manager = NodeManager::new_with_binary(config, cardano_node_path.clone())?;
+            let manager = NodeManager::new_with_binaries(config, cardano_node_path.clone(), cardano_cli_path.clone())?;
             manager.stop(force).await?;
         }
 
         Commands::Status => {
-            let manager = NodeManager::new_with_binary(config, cardano_node_path.clone())?;
+            let manager = NodeManager::new_with_binaries(config, cardano_node_path.clone(), cardano_cli_path.clone())?;
             let status = manager.status().await?;
             println!("{}", status);
         }

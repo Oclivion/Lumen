@@ -94,6 +94,31 @@ impl NodeManager {
         })
     }
 
+    /// Create a new NodeManager with both optimal cardano-node and cardano-cli binaries
+    pub fn new_with_binaries(config: Config, node_binary: PathBuf, cli_binary: PathBuf) -> Result<Self> {
+        // Use provided optimal binaries
+        let node_binary = if config.node_binary.is_some() {
+            config.node_binary.clone().unwrap()
+        } else {
+            node_binary
+        };
+
+        let cli_binary = if config.cli_binary.is_some() {
+            config.cli_binary.clone().unwrap()
+        } else {
+            cli_binary
+        };
+
+        debug!("Node binary: {:?}", node_binary);
+        debug!("CLI binary: {:?}", cli_binary);
+
+        Ok(Self {
+            config,
+            node_binary,
+            cli_binary,
+        })
+    }
+
     /// Create a new NodeManager (legacy method for compatibility)
     pub fn new(config: Config) -> Result<Self> {
         // Find node binary using old logic (fallback)

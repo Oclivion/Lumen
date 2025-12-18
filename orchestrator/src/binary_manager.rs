@@ -76,6 +76,19 @@ impl BinaryManager {
         self.get_bundled_binary()
     }
 
+    /// Get the cardano-cli binary (should be called after get_optimal_cardano_node)
+    pub fn get_cardano_cli(&self, system: &SystemProfile) -> Result<PathBuf> {
+        // First check if cardano-cli was cached when we downloaded cardano-node
+        let latest_version = "10.5.3"; // This should match the version from get_optimal_cardano_node
+        let cached_cli_path = self.cache_dir.join(format!("cardano-cli-{}", latest_version));
+
+        if cached_cli_path.exists() {
+            Ok(cached_cli_path)
+        } else {
+            Err(LumenError::BinaryNotFound("cardano-cli not found. Please run node setup first.".to_string()))
+        }
+    }
+
     /// Try to download optimal binary from GitHub releases
     async fn try_download_optimal_binary(&self, system: &SystemProfile) -> Result<PathBuf> {
         debug!("Attempting to download optimal binary for {:?}", system);
@@ -311,50 +324,64 @@ impl BinaryManager {
         archive.unpack(&temp_dir)
             .map_err(|e| LumenError::Io(e))?;
 
-        // Find cardano-node binary
-        let cardano_node_path = self.find_cardano_node_in_extraction(&temp_dir)?;
-
-        // Move to final cache location
-        let final_path = self.cache_dir.join(format!("cardano-node-{}", version));
-        fs::rename(&cardano_node_path, &final_path)
+        // Find and cache both cardano-node and cardano-cli
+        let cardano_node_path = self.find_binary_in_extraction(&temp_dir, "cardano-node")?;
+        let final_node_path = self.cache_dir.join(format!("cardano-node-{}", version));
+        fs::rename(&cardano_node_path, &final_node_path)
             .map_err(|e| LumenError::Io(e))?;
+
+        // Also extract cardano-cli if present
+        if let Ok(cardano_cli_path) = self.find_binary_in_extraction(&temp_dir, "cardano-cli") {
+            let final_cli_path = self.cache_dir.join(format!("cardano-cli-{}", version));
+            fs::rename(&cardano_cli_path, &final_cli_path)
+                .map_err(|e| LumenError::Io(e))?;
+
+            // Make cardano-cli executable
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mut perms = fs::metadata(&final_cli_path)?.permissions();
+                perms.set_mode(0o755);
+                fs::set_permissions(&final_cli_path, perms)?;
+            }
+        }
 
         // Cleanup temp directory
         let _ = fs::remove_dir_all(&temp_dir);
 
-        // Make executable
+        // Make cardano-node executable
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = fs::metadata(&final_path)?.permissions();
+            let mut perms = fs::metadata(&final_node_path)?.permissions();
             perms.set_mode(0o755);
-            fs::set_permissions(&final_path, perms)?;
+            fs::set_permissions(&final_node_path, perms)?;
         }
 
-        Ok(final_path)
+        Ok(final_node_path)
     }
 
-    /// Find cardano-node binary in extracted directory
-    fn find_cardano_node_in_extraction(&self, dir: &Path) -> Result<PathBuf> {
+    /// Find binary in extracted directory
+    fn find_binary_in_extraction(&self, dir: &Path, binary_name: &str) -> Result<PathBuf> {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
 
             if path.is_file() {
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if name == "cardano-node" || name.starts_with("cardano-node") {
+                    if name == binary_name || name.starts_with(binary_name) {
                         return Ok(path);
                     }
                 }
             } else if path.is_dir() {
                 // Recursively search subdirectories
-                if let Ok(found) = self.find_cardano_node_in_extraction(&path) {
+                if let Ok(found) = self.find_binary_in_extraction(&path, binary_name) {
                     return Ok(found);
                 }
             }
         }
 
-        Err(LumenError::BinaryNotFound("cardano-node not found in archive".to_string()))
+        Err(LumenError::BinaryNotFound(format!("{} not found in archive", binary_name)))
     }
 
     /// Get bundled fallback binary
