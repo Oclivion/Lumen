@@ -53,7 +53,8 @@ export LUMEN_DATA_DIR="${LUMEN_DATA_DIR:-$XDG_DATA_HOME/lumen}"
 mkdir -p "$LUMEN_DATA_DIR" 2>/dev/null || {
     # GRANDMA-FRIENDLY: Auto-fix data directory issue with fallback
     echo "🔧 Adjusting data directory location..." >&2
-    LUMEN_DATA_DIR="/tmp/lumen-$(id -u)"
+    # Use static fallback to avoid GLIBC issues with id command
+    LUMEN_DATA_DIR="/tmp/lumen-user"
     export LUMEN_DATA_DIR
     mkdir -p "$LUMEN_DATA_DIR" 2>/dev/null || {
         echo "❌ Could not create data directory. Please check disk space." >&2

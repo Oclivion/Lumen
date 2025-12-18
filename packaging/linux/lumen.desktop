@@ -11,6 +11,7 @@ Keywords=cardano;blockchain;crypto;node;
 StartupNotify=true
 StartupWMClass=lumen
 MimeType=x-scheme-handler/cardano;
+X-AppImage-Integrate=false
 
 # Actions for quick access
 Actions=start;stop;status;
