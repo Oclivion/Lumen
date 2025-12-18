@@ -63,3 +63,7 @@ tokio-util = { version = "0.7", features = ["io"] }
 
 # Semver
 semver = { version = "1.0", features = ["serde"] }
+
+# Archive handling
+tar = "0.4"
+flate2 = "1.0"
