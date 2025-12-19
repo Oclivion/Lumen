@@ -14,7 +14,7 @@ mod updater;
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
-use tracing::{info, Level};
+use tracing::{debug, info, Level};
 use tracing_subscriber::EnvFilter;
 
 use crate::binary_manager::BinaryManager;
@@ -174,16 +174,21 @@ async fn run() -> Result<()> {
         } => {
             let mut manager = NodeManager::new_with_binaries(config.clone(), cardano_node_path.clone(), cardano_cli_path.clone())?;
 
-            // Check for updates unless skipped
+            // Check for updates unless skipped (non-fatal if check fails)
             if !skip_update_check {
                 let updater = Updater::new(config.clone());
-                if let Some(update) = updater.check_for_update().await? {
-                    info!(
-                        "Update available: {} -> {}",
-                        env!("CARGO_PKG_VERSION"),
-                        update.version
-                    );
-                    // In a real implementation, prompt user or auto-update based on config
+                match updater.check_for_update().await {
+                    Ok(Some(update)) => {
+                        info!(
+                            "Update available: {} -> {}",
+                            env!("CARGO_PKG_VERSION"),
+                            update.version
+                        );
+                    }
+                    Ok(None) => {}
+                    Err(e) => {
+                        debug!("Update check skipped: {}", e);
+                    }
                 }
             }
 
