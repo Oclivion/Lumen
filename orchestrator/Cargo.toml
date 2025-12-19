@@ -22,6 +22,10 @@ path = "src/bin/sign_release.rs"
 name = "lumen-verify"
 path = "src/bin/verify_release.rs"
 
+[[bin]]
+name = "test-error-format"
+path = "src/bin/test_error_format.rs"
+
 [dependencies]
 tokio.workspace = true
 reqwest.workspace = true

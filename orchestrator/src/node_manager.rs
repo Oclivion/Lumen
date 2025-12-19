@@ -408,12 +408,24 @@ impl NodeManager {
             return Ok(config_path);
         }
 
-        // For now, return error - in production would download from IOG
-        // The configs should be bundled with the AppImage
-        Err(LumenError::Config(format!(
-            "Network config not found at {:?}. Run 'lumen init' first.",
-            config_path
-        )))
+        // Config not found - automatically download it
+        info!("Network config not found, downloading automatically...");
+
+        // Ensure config directory exists
+        fs::create_dir_all(&config_dir)?;
+
+        // Download all required config files for this network
+        Config::download_network_configs(&self.config)?;
+
+        // Verify the config was downloaded
+        if config_path.exists() {
+            Ok(config_path)
+        } else {
+            Err(LumenError::Config(format!(
+                "Failed to download network config for {:?}",
+                config_path
+            )))
+        }
     }
 
     /// Build GHC RTS options for memory management

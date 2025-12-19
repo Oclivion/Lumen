@@ -362,7 +362,14 @@ impl Updater {
 
     /// Apply the update by extracting and replacing binaries
     async fn apply_update(&self, archive_path: &Path, temp_dir: &Path) -> Result<()> {
-        // Extract archive
+        // Check if running inside an AppImage
+        if let Ok(appimage_path) = std::env::var("APPIMAGE") {
+            // AppImage mode: replace the outer AppImage file, not inner binary
+            info!("Detected AppImage execution, replacing AppImage file");
+            return self.update_appimage(archive_path, &PathBuf::from(appimage_path)).await;
+        }
+
+        // Standard mode: extract and replace binary
         let extract_dir = temp_dir.join("extracted");
         fs::create_dir_all(&extract_dir)?;
 
@@ -436,9 +443,36 @@ impl Updater {
             }
         }
 
-        // Clean up backup on success
-        // (In production, keep backup until restart succeeds)
+        Ok(())
+    }
 
+    /// Update an AppImage by replacing the outer .AppImage file
+    async fn update_appimage(&self, archive_path: &Path, appimage_path: &Path) -> Result<()> {
+        // For AppImage updates, the archive should contain the new .AppImage file
+        // not a tarball to extract
+
+        info!("Backing up current AppImage");
+        let backup_path = appimage_path.with_extension("backup");
+        if backup_path.exists() {
+            fs::remove_file(&backup_path)?;
+        }
+        fs::copy(appimage_path, &backup_path)?;
+
+        info!("Replacing AppImage file");
+
+        // Copy downloaded file to replace current AppImage
+        fs::copy(archive_path, appimage_path)?;
+
+        // Make sure it's executable
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(appimage_path)?.permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(appimage_path, perms)?;
+        }
+
+        info!("AppImage update complete");
         Ok(())
     }
 

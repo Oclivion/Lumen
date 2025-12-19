@@ -81,7 +81,8 @@ pub struct Config {
     /// Selected network
     pub network: Network,
 
-    /// Data directory for chain database and config
+    /// Data directory for chain database and config (computed from binary location)
+    #[serde(skip)]
     pub data_dir: PathBuf,
 
     /// Path to cardano-node binary (None = use bundled)
@@ -115,7 +116,8 @@ pub struct NodeConfig {
     /// Port for node-to-node communication
     pub port: u16,
 
-    /// Socket path for local IPC
+    /// Socket path for local IPC (computed from data directory)
+    #[serde(skip)]
     pub socket_path: PathBuf,
 
     /// Topology peers
@@ -224,17 +226,29 @@ impl Config {
 
     /// Get the default data directory
     pub fn default_data_dir() -> PathBuf {
-        // Try to use directory next to the binary for better disk space utilization
+        // 1. Check for explicit environment variable (AppImage sets this)
+        if let Ok(data_dir) = std::env::var("LUMEN_DATA_DIR") {
+            return PathBuf::from(data_dir);
+        }
+
+        // 2. Use XDG data directory (standard Linux location)
+        if let Some(xdg_data) = dirs::data_dir() {
+            return xdg_data.join("lumen");
+        }
+
+        // 3. Try directory next to binary only if writable (won't work in AppImage)
         if let Ok(exe_path) = std::env::current_exe() {
             if let Some(exe_dir) = exe_path.parent() {
-                return exe_dir.join(".lumen");
+                let candidate = exe_dir.join(".lumen");
+                // Test if we can create the directory (AppImage mount is read-only)
+                if std::fs::create_dir_all(&candidate).is_ok() {
+                    return candidate;
+                }
             }
         }
 
-        // Fallback to user data directory if binary location detection fails
-        dirs::data_dir()
-            .map(|d| d.join("lumen"))
-            .unwrap_or_else(|| PathBuf::from(".lumen"))
+        // 4. Final fallback
+        PathBuf::from(".lumen")
     }
 
     /// Get the default config file path
@@ -260,14 +274,16 @@ impl Config {
             toml::from_str(&content)?
         } else {
             info!("Using default configuration for {:?}", network);
-            Self::for_network(network, data_dir.map(PathBuf::from))
+            Self::for_network(network, None) // Never use config file data_dir
         };
 
-        // Override data_dir if provided
-        if let Some(dir) = data_dir {
-            config.data_dir = dir.to_path_buf();
-            config.node.socket_path = dir.join("node.socket");
-        }
+        // Use explicit data_dir if provided, otherwise respect environment/XDG
+        let computed_data_dir = data_dir
+            .map(PathBuf::from)
+            .unwrap_or_else(Self::default_data_dir);
+
+        config.data_dir = computed_data_dir.clone();
+        config.node.socket_path = computed_data_dir.join("node.socket");
 
         // Override network if different
         if config.network != network {
@@ -336,6 +352,73 @@ impl Config {
         fs::write(&topology_path, serde_json::to_string_pretty(&topology)?)?;
 
         info!("Wrote topology configuration to {:?}", topology_path);
+
+        // Download required cardano-node config and genesis files
+        Self::download_network_configs(config)?;
+
+        Ok(())
+    }
+
+    /// Download required cardano-node configuration and genesis files
+    pub fn download_network_configs(config: &Config) -> Result<()> {
+        let config_dir = config.data_dir.join("config");
+
+        let files_to_download = match config.network {
+            Network::Mainnet => vec![
+                ("mainnet-config.json", "https://raw.githubusercontent.com/IntersectMBO/cardano-node/master/configuration/cardano/mainnet-config.json"),
+                ("mainnet-byron-genesis.json", "https://book.world.dev.cardano.org/environments/mainnet/byron-genesis.json"),
+                ("mainnet-shelley-genesis.json", "https://book.world.dev.cardano.org/environments/mainnet/shelley-genesis.json"),
+                ("mainnet-alonzo-genesis.json", "https://book.world.dev.cardano.org/environments/mainnet/alonzo-genesis.json"),
+                ("mainnet-conway-genesis.json", "https://book.world.dev.cardano.org/environments/mainnet/conway-genesis.json"),
+            ],
+            Network::Preview => vec![
+                ("preview-config.json", "https://book.world.dev.cardano.org/environments/preview/config.json"),
+                ("preview-byron-genesis.json", "https://book.world.dev.cardano.org/environments/preview/byron-genesis.json"),
+                ("preview-shelley-genesis.json", "https://book.world.dev.cardano.org/environments/preview/shelley-genesis.json"),
+                ("preview-alonzo-genesis.json", "https://book.world.dev.cardano.org/environments/preview/alonzo-genesis.json"),
+                ("preview-conway-genesis.json", "https://book.world.dev.cardano.org/environments/preview/conway-genesis.json"),
+            ],
+            Network::Preprod => vec![
+                ("preprod-config.json", "https://book.world.dev.cardano.org/environments/preprod/config.json"),
+                ("preprod-byron-genesis.json", "https://book.world.dev.cardano.org/environments/preprod/byron-genesis.json"),
+                ("preprod-shelley-genesis.json", "https://book.world.dev.cardano.org/environments/preprod/shelley-genesis.json"),
+                ("preprod-alonzo-genesis.json", "https://book.world.dev.cardano.org/environments/preprod/alonzo-genesis.json"),
+                ("preprod-conway-genesis.json", "https://book.world.dev.cardano.org/environments/preprod/conway-genesis.json"),
+            ],
+        };
+
+        let client = reqwest::blocking::Client::new();
+
+        for (filename, url) in files_to_download {
+            let file_path = config_dir.join(filename);
+
+            // Skip if file already exists
+            if file_path.exists() {
+                info!("Config file already exists: {:?}", filename);
+                continue;
+            }
+
+            info!("Downloading config file: {} from {}", filename, url);
+
+            let response = client.get(url)
+                .header("User-Agent", format!("Lumen/{}", env!("CARGO_PKG_VERSION")))
+                .send()
+                .map_err(|e| LumenError::Network(e))?;
+
+            if !response.status().is_success() {
+                return Err(LumenError::Update(format!(
+                    "Failed to download {}: HTTP {}",
+                    filename, response.status()
+                )));
+            }
+
+            let content = response.text()
+                .map_err(|e| LumenError::Network(e))?;
+
+            fs::write(&file_path, content)?;
+            info!("Downloaded: {:?}", file_path);
+        }
+
         Ok(())
     }
 

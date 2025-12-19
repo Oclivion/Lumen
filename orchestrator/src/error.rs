@@ -57,7 +57,7 @@ pub enum LumenError {
     #[error("Binary not found: {0}")]
     BinaryNotFound(String),
 
-    #[error("Insufficient disk space: need {needed} GB, have {available} GB")]
+    #[error("Insufficient disk space: need {needed} GB, have {available} GB. Please run this command from a directory on a filesystem with at least {needed} GB available space.")]
     InsufficientDiskSpace { needed: u64, available: u64 },
 
     #[error("Process error: {0}")]

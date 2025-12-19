@@ -77,16 +77,60 @@ impl BinaryManager {
     }
 
     /// Get the cardano-cli binary (should be called after get_optimal_cardano_node)
-    pub fn get_cardano_cli(&self, system: &SystemProfile) -> Result<PathBuf> {
-        // First check if cardano-cli was cached when we downloaded cardano-node
-        let latest_version = "10.5.3"; // This should match the version from get_optimal_cardano_node
-        let cached_cli_path = self.cache_dir.join(format!("cardano-cli-{}", latest_version));
+    pub fn get_cardano_cli(&self, _system: &SystemProfile) -> Result<PathBuf> {
+        // Find the most recent cardano-cli in the cache
+        if let Ok(version) = self.get_latest_cached_version() {
+            let cached_cli_path = self.cache_dir.join(format!("cardano-cli-{}", version));
 
-        if cached_cli_path.exists() {
-            Ok(cached_cli_path)
-        } else {
-            Err(LumenError::BinaryNotFound("cardano-cli not found. Please run node setup first.".to_string()))
+            if cached_cli_path.exists() {
+                return Ok(cached_cli_path);
+            }
         }
+
+        // Fall back to searching any cardano-cli-* file
+        if let Ok(entries) = fs::read_dir(&self.cache_dir) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let file_name = entry.file_name();
+                    if let Some(name) = file_name.to_str() {
+                        if name.starts_with("cardano-cli-") {
+                            return Ok(entry.path());
+                        }
+                    }
+                }
+            }
+        }
+
+        Err(LumenError::BinaryNotFound("cardano-cli not found. Please run node setup first.".to_string()))
+    }
+
+    /// Get the latest cached version by examining cached files
+    fn get_latest_cached_version(&self) -> Result<String> {
+        if !self.cache_dir.exists() {
+            return Err(LumenError::BinaryNotFound("Cache directory doesn't exist".to_string()));
+        }
+
+        let mut versions = Vec::new();
+
+        for entry in fs::read_dir(&self.cache_dir)? {
+            let entry = entry?;
+            let file_name = entry.file_name();
+            if let Some(name) = file_name.to_str() {
+                if name.starts_with("cardano-node-") {
+                    // Extract version from filename like "cardano-node-v10.5.3"
+                    let version = name.trim_start_matches("cardano-node-");
+                    versions.push(version.to_string());
+                }
+            }
+        }
+
+        if versions.is_empty() {
+            return Err(LumenError::BinaryNotFound("No cached versions found".to_string()));
+        }
+
+        // Return the most recent (should be the last one downloaded)
+        versions.sort();
+        Ok(versions.into_iter().last().unwrap())
     }
 
     /// Try to download optimal binary from GitHub releases
@@ -167,66 +211,31 @@ impl BinaryManager {
 
     /// Get preferred asset names in order of preference
     fn get_preferred_asset_names(&self, system: &SystemProfile, version: &str) -> Vec<String> {
-        let _version = version.trim_start_matches('v'); // Remove 'v' prefix if present
+        let version = version.trim_start_matches('v'); // Remove 'v' prefix if present
         let mut names = Vec::new();
 
-        match system.compatibility_tier {
-            CompatibilityTier::Exact => {
-                // Try exact match first
-                names.push(format!("{}-{}-{}", system.distro, system.distro_version, system.arch));
-                names.push(format!("{}-{}", system.distro, system.distro_version));
+        // IntersectMBO uses simple naming: cardano-node-<version>-linux.tar.gz
+        // Match actual asset patterns from IntersectMBO releases
+        names.push(format!("cardano-node-{}-linux.tar.gz", version));
+        names.push("cardano-node".to_string()); // Partial match fallback
 
-                // Then compatible versions
-                if system.distro == "ubuntu" {
-                    match system.distro_version.as_str() {
-                        "22.04" => names.push("ubuntu-20.04".to_string()),
-                        "20.04" => names.push("ubuntu-18.04".to_string()),
-                        _ => {},
-                    }
-                }
-            },
-            CompatibilityTier::Compatible => {
-                // Use compatible version first
-                let compat_version = self.get_compatible_version(system);
-                names.push(format!("{}-{}-{}", system.distro, compat_version, system.arch));
-                names.push(format!("{}-{}", system.distro, compat_version));
-            },
-            CompatibilityTier::Static | CompatibilityTier::Fallback => {
-                // Prefer static builds
-                names.push(format!("static-{}", system.arch));
-                names.push("static".to_string());
-                names.push(format!("musl-{}", system.arch));
-                names.push("musl".to_string());
-            },
+        // Try architecture-specific variants if they exist
+        if system.arch == "x86_64" {
+            names.push(format!("cardano-node-{}-linux-x86_64.tar.gz", version));
+            names.push("linux-x86_64".to_string());
+        } else if system.arch == "aarch64" {
+            names.push(format!("cardano-node-{}-linux-aarch64.tar.gz", version));
+            names.push("linux-aarch64".to_string());
         }
 
-        // Always add generic Linux as last resort
-        names.push(format!("linux-{}", system.arch));
+        // Generic patterns as fallback
+        names.push("linux.tar.gz".to_string());
         names.push("linux".to_string());
 
         debug!("Asset name preferences: {:?}", names);
         names
     }
 
-    fn get_compatible_version<'a>(&self, system: &'a SystemProfile) -> &'a str {
-        match system.distro.as_str() {
-            "ubuntu" => {
-                if system.distro_version.as_str() >= "22.04" { "22.04" }
-                else if system.distro_version.as_str() >= "20.04" { "20.04" }
-                else { "18.04" }
-            },
-            "debian" => {
-                if system.distro_version.as_str() >= "12" { "12" }
-                else if system.distro_version.as_str() >= "11" { "11" }
-                else { "10" }
-            },
-            "rhel" => {
-                if system.distro_version.as_str() >= "9" { "9" }
-                else { "8" }
-            },
-            _ => &system.distro_version,
-        }
-    }
 
     /// Check if binary is already cached and return path
     fn get_cached_binary(&self, _asset_name: &str, version: &str) -> Result<PathBuf> {
