@@ -3,7 +3,7 @@ resolver = "2"
 members = ["orchestrator", "gui/src-tauri", "disk_debug"]
 
 [workspace.package]
-version = "0.3.10"
+version = "0.3.11"
 edition = "2021"
 authors = ["Lumen Contributors"]
 license = "MIT OR Apache-2.0"

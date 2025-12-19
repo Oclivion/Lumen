@@ -370,6 +370,7 @@ impl Config {
                 ("mainnet-shelley-genesis.json", "https://book.world.dev.cardano.org/environments/mainnet/shelley-genesis.json"),
                 ("mainnet-alonzo-genesis.json", "https://book.world.dev.cardano.org/environments/mainnet/alonzo-genesis.json"),
                 ("mainnet-conway-genesis.json", "https://book.world.dev.cardano.org/environments/mainnet/conway-genesis.json"),
+                ("mainnet-checkpoints.json", "https://raw.githubusercontent.com/IntersectMBO/cardano-node/master/configuration/cardano/mainnet-checkpoints.json"),
             ],
             Network::Preview => vec![
                 ("preview-config.json", "https://book.world.dev.cardano.org/environments/preview/config.json"),
