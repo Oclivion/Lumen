@@ -226,17 +226,12 @@ impl Config {
 
     /// Get the default data directory
     pub fn default_data_dir() -> PathBuf {
-        // 1. Check for explicit environment variable (AppImage sets this)
+        // 1. Check for explicit environment variable
         if let Ok(data_dir) = std::env::var("LUMEN_DATA_DIR") {
             return PathBuf::from(data_dir);
         }
 
-        // 2. Use XDG data directory (standard Linux location)
-        if let Some(xdg_data) = dirs::data_dir() {
-            return xdg_data.join("lumen");
-        }
-
-        // 3. Try directory next to binary only if writable (won't work in AppImage)
+        // 2. Try directory next to binary first (grandma command puts binary on big drive)
         if let Ok(exe_path) = std::env::current_exe() {
             if let Some(exe_dir) = exe_path.parent() {
                 let candidate = exe_dir.join(".lumen");
@@ -245,6 +240,11 @@ impl Config {
                     return candidate;
                 }
             }
+        }
+
+        // 3. Fall back to XDG data directory
+        if let Some(xdg_data) = dirs::data_dir() {
+            return xdg_data.join("lumen");
         }
 
         // 4. Final fallback
